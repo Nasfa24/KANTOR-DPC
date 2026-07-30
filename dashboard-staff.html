@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Tambahkan Library QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -23,26 +22,19 @@
 </head>
 <body class="p-4 pb-20">
 
-    <!-- Header & Info Saldo -->
     <div class="glass-card p-6 mb-6 text-center relative overflow-hidden">
-        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
-            <i class="fa-solid fa-power-off text-xl"></i>
-        </button>
+        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-power-off text-xl"></i></button>
         <p class="text-gray-300 text-sm mb-1">Selamat bekerja,</p>
         <h2 id="staffName" class="text-2xl font-bold mb-4 text-blue-400">Loading...</h2>
-        
         <div class="bg-white/10 rounded-2xl p-4 border border-white/20">
             <p class="text-gray-300 text-xs uppercase tracking-widest mb-1">Sisa Kuota Makan</p>
             <h1 id="saldoStaff" class="text-4xl font-extrabold tracking-tight">Rp 0</h1>
         </div>
     </div>
 
-    <!-- Modul QR Code Pembayaran (BARU) -->
     <div class="glass-card p-6 mb-6 text-center">
         <h3 class="text-lg font-bold mb-4 text-orange-400"><i class="fa-solid fa-qrcode mr-2"></i> QR Jajan UMKM</h3>
         <p class="text-xs text-gray-300 mb-4">Tunjukkan kode ini kepada Mitra UMKM untuk di-scan saat Anda melakukan pembayaran.</p>
-        
-        <!-- Kotak Putih untuk QR agar kontras dan mudah di-scan kamera -->
         <div class="bg-white p-4 rounded-2xl inline-block shadow-lg mx-auto mb-2">
             <div id="qrcodeBox"></div>
         </div>
@@ -50,7 +42,6 @@
         <button onclick="window.location.reload()" class="mt-4 text-xs text-blue-400 underline"><i class="fa-solid fa-rotate mr-1"></i> Refresh Saldo</button>
     </div>
 
-    <!-- Modul Absensi (Geofencing) -->
     <div class="glass-card p-6">
         <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-location-dot text-blue-400 mr-2"></i> Presensi Kehadiran</h3>
         <div id="radarContainer" class="radar-box mb-4">
@@ -58,9 +49,7 @@
             <div class="radar-core"></div>
         </div>
         <p id="gpsStatus" class="text-center text-sm text-gray-400 mb-4">Pindai lokasi Anda untuk absen.</p>
-        <button id="btnScanGPS" onclick="scanLocation()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold shadow-lg mb-2">
-            <i class="fa-solid fa-satellite-dish mr-2"></i> Pindai Lokasi GPS
-        </button>
+        <button id="btnScanGPS" onclick="scanLocation()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold shadow-lg mb-2"><i class="fa-solid fa-satellite-dish mr-2"></i> Pindai Lokasi GPS</button>
         <button id="btnAbsen" style="display: none;" 
                 class="hold-btn w-full bg-gray-800 border border-emerald-500/30 py-4 rounded-xl font-bold shadow-lg"
                 onmousedown="startHold(event, executeAbsen)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
@@ -78,20 +67,12 @@
         if (user) {
             document.getElementById('staffName').innerText = user.nama;
             document.getElementById('saldoStaff').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(user.saldo);
-            
-            // GENERATE QR CODE BERDASARKAN ID USER
             document.getElementById('qrIDLabel').innerText = user.id_user;
             new QRCode(document.getElementById("qrcodeBox"), {
-                text: user.id_user, // Data yang akan dibaca kamera Mitra
-                width: 180,
-                height: 180,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                text: user.id_user, width: 180, height: 180, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
             });
         }
 
-        // --- Logika GPS Absensi (Sama seperti sebelumnya) ---
         function scanLocation() {
             const status = document.getElementById('gpsStatus'), radar = document.getElementById('radarContainer'), btnScan = document.getElementById('btnScanGPS'), btnAbsen = document.getElementById('btnAbsen');
             if (!navigator.geolocation) return Swal.fire("Error", "GPS tidak didukung", "error");
@@ -101,9 +82,8 @@
                     userLat = pos.coords.latitude; userLon = pos.coords.longitude;
                     radar.classList.remove('active'); status.innerHTML = `<span class='text-emerald-400'><i class='fa-solid fa-check-circle'></i> Lokasi terkunci.</span>`; btnAbsen.style.display = 'block';
                 },
-                (err) => {
-                    radar.classList.remove('active'); btnScan.style.display = 'block'; Swal.fire("GPS Gagal", "Gagal mengambil lokasi/ditolak.", "error"); status.innerText = "Gagal memindai.";
-                }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                (err) => { radar.classList.remove('active'); btnScan.style.display = 'block'; Swal.fire("GPS Gagal", "Gagal/ditolak.", "error"); status.innerText = "Gagal memindai."; },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
 
@@ -117,13 +97,25 @@
             }
         }
 
+        // =========================================================
+        // MEMORY-SAFE HOLD ENGINE
+        // =========================================================
         let holdTimer;
+        let activeHoldBg = null;
+
         function startHold(e, actionCallback) {
-            e.preventDefault(); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 1.5s linear'; bg.style.width = '100%';
-            holdTimer = setTimeout(() => { cancelHold(e); actionCallback(); }, 1500);
+            e.preventDefault(); 
+            activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; }
+            holdTimer = setTimeout(() => { 
+                actionCallback(); 
+                if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg = null; }
+            }, 1500);
         }
+
         function cancelHold(e) {
-            clearTimeout(holdTimer); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 0.2s ease-out'; bg.style.width = '0%';
+            clearTimeout(holdTimer); 
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg = null; }
         }
     </script>
 </body>
