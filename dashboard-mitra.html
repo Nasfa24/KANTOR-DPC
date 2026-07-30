@@ -22,34 +22,24 @@
 <body class="p-4 pb-20">
 
     <div class="glass-card p-6 mb-6 text-center relative overflow-hidden">
-        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
-            <i class="fa-solid fa-power-off text-xl"></i>
-        </button>
+        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-power-off text-xl"></i></button>
         <p class="text-gray-300 text-sm mb-1">POS System Mitra,</p>
         <h2 id="mitraName" class="text-2xl font-bold mb-2 text-orange-400">Loading...</h2>
     </div>
 
     <!-- Navigasi -->
     <div class="flex gap-2 mb-6">
-        <button onclick="switchTab('tab-kasir')" id="btn-tab-kasir" class="flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all">
-            <i class="fa-solid fa-qrcode mr-1"></i> Kasir
-        </button>
-        <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all">
-            <i class="fa-solid fa-money-bill-transfer mr-1"></i> Pencairan
-        </button>
+        <button onclick="switchTab('tab-kasir')" id="btn-tab-kasir" class="flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all"><i class="fa-solid fa-qrcode mr-1"></i> Kasir</button>
+        <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Pencairan</button>
     </div>
 
-    <!-- TAB 1: KASIR (SCAN QR) -->
+    <!-- TAB 1: KASIR -->
     <div id="tab-kasir" class="tab-content active">
         <div class="glass-card p-6 mb-6 text-center">
             <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-camera text-blue-400 mr-2"></i> Scan QR Pelanggan</h3>
             <div id="reader" class="mb-4 hidden"></div>
-            <button id="btnStartScan" onclick="startScanner()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold shadow-lg">
-                <i class="fa-solid fa-qrcode mr-2"></i> Buka Kamera Scanner
-            </button>
-            <button id="btnStopScan" onclick="stopScanner()" class="w-full bg-red-600 hover:bg-red-500 py-3 rounded-xl font-bold shadow-lg hidden">
-                Tutup Kamera
-            </button>
+            <button id="btnStartScan" onclick="startScanner()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold shadow-lg"><i class="fa-solid fa-qrcode mr-2"></i> Buka Kamera Scanner</button>
+            <button id="btnStopScan" onclick="stopScanner()" class="w-full bg-red-600 hover:bg-red-500 py-3 rounded-xl font-bold shadow-lg hidden">Tutup Kamera</button>
         </div>
 
         <div id="panelTagihan" class="glass-card p-6 hidden">
@@ -73,13 +63,12 @@
         </div>
     </div>
 
-    <!-- TAB 2: PENCAIRAN (KLAIM KE ADMIN) -->
+    <!-- TAB 2: PENCAIRAN -->
     <div id="tab-klaim" class="tab-content">
         <div class="glass-card p-6 text-center">
             <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-wallet text-emerald-400 mr-2"></i> Dana Bisa Diklaim</h3>
             <p class="text-xs text-gray-400 mb-2">Total transaksi yang belum ditagihkan ke Kantor</p>
             <h1 id="totalUnclaimed" class="text-4xl font-black text-emerald-400 mb-6">Rp 0</h1>
-
             <button id="btnKlaim" class="hold-btn w-full bg-gray-800 border border-emerald-500/30 py-4 rounded-xl font-bold shadow-lg"
                     onmousedown="startHold(event, executeKlaimDana)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
                     ontouchstart="startHold(event, executeKlaimDana)" ontouchend="cancelHold(event)">
@@ -103,7 +92,6 @@
 
         const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
 
-        // -- TABS LOGIC --
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
@@ -113,59 +101,43 @@
             } else {
                 document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all";
                 document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all";
-                loadDataKlaim(); // Refresh data saat buka tab
+                loadDataKlaim();
             }
         }
 
-        // -- DATA KLAIM LOGIC --
         async function loadDataKlaim() {
             try {
                 const data = await callAPI("get_mitra_data", { id_mitra: user.id_user });
                 totalBisaDiklaim = data.total_unclaimed;
                 document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
                 
-                // Disable tombol jika 0
                 const btnKlaim = document.getElementById('btnKlaim');
-                if(totalBisaDiklaim === 0) {
-                    btnKlaim.style.opacity = "0.5";
-                    btnKlaim.style.pointerEvents = "none";
-                } else {
-                    btnKlaim.style.opacity = "1";
-                    btnKlaim.style.pointerEvents = "auto";
-                }
-            } catch (err) { console.error("Gagal muat data mitra", err); }
+                if(totalBisaDiklaim === 0) { btnKlaim.style.opacity = "0.5"; btnKlaim.style.pointerEvents = "none"; } 
+                else { btnKlaim.style.opacity = "1"; btnKlaim.style.pointerEvents = "auto"; }
+            } catch (err) {}
         }
 
         async function executeKlaimDana() {
             if(totalBisaDiklaim === 0) return;
             try {
                 await callAPI("klaim_mitra", { id_mitra: user.id_user });
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Tagihan Terkirim!',
-                    text: `Tagihan sebesar ${formatRp(totalBisaDiklaim)} telah dikirim ke Kepala Kantor.`,
-                    confirmButtonColor: '#10b981'
-                });
-                loadDataKlaim(); // Refresh angka ke 0
+                Swal.fire({ icon: 'success', title: 'Tagihan Terkirim!', text: `Tagihan sebesar ${formatRp(totalBisaDiklaim)} telah dikirim.`, confirmButtonColor: '#10b981' });
+                loadDataKlaim();
             } catch (err) {}
         }
 
-        // -- KAMERA SCANNER LOGIC --
         function startScanner() {
-            document.getElementById('reader').classList.remove('hidden');
-            document.getElementById('btnStartScan').classList.add('hidden');
-            document.getElementById('btnStopScan').classList.remove('hidden');
-            document.getElementById('panelTagihan').classList.add('hidden'); 
+            document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScan').classList.add('hidden'); document.getElementById('btnStopScan').classList.remove('hidden'); document.getElementById('panelTagihan').classList.add('hidden'); 
             html5QrcodeScanner = new Html5Qrcode("reader");
-            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, (err)=>{})
-            .catch(() => { Swal.fire("Kamera Gagal", "Izin kamera ditolak.", "error"); stopScanner(); });
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, ()=>{})
+            .catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
         }
+        
         function stopScanner() {
             if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
-            document.getElementById('reader').classList.add('hidden');
-            document.getElementById('btnStartScan').classList.remove('hidden');
-            document.getElementById('btnStopScan').classList.add('hidden');
+            document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); document.getElementById('btnStopScan').classList.add('hidden');
         }
+
         async function onScanSuccess(decodedText) {
             stopScanner();
             try {
@@ -176,8 +148,9 @@
                 document.getElementById('panelTagihan').classList.remove('hidden');
                 document.getElementById('inputNominal').value = '';
                 new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
-            } catch (error) { Swal.fire("QR Tidak Valid", "Kode QR tidak dikenali.", "error"); }
+            } catch (error) { Swal.fire("QR Error", "Kode QR tidak dikenali.", "error"); }
         }
+
         async function executeTagihan() {
             const nominal = parseInt(document.getElementById('inputNominal').value);
             if (!nominal || nominal <= 0) return Swal.fire("Peringatan", "Nominal tidak valid", "warning");
@@ -185,18 +158,45 @@
                 await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nominal });
                 Swal.fire({ icon: 'success', title: 'Sukses!', text: `Transaksi Rp ${nominal.toLocaleString('id-ID')} dicatat.`, confirmButtonColor: '#10b981' });
                 document.getElementById('panelTagihan').classList.add('hidden'); scannedStaffID = null;
-                loadDataKlaim(); // Update background data
+                loadDataKlaim();
             } catch (err) {}
         }
 
-        // -- HOLD BUTTON ENGINE --
+        // =========================================================
+        // BUG FIX: MEMORY-SAFE HOLD ENGINE (ANTI MACET DI HP)
+        // =========================================================
         let holdTimer;
+        let activeHoldBg = null; // Menyimpan referensi DOM secara global
+
         function startHold(e, actionCallback) {
-            e.preventDefault(); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 1.5s linear'; bg.style.width = '100%';
-            holdTimer = setTimeout(() => { cancelHold(e); actionCallback(); }, 1500);
+            e.preventDefault(); 
+            // Ambil elemen warna yang sedang di-tap dan simpan ke variabel global
+            activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
+            if(activeHoldBg) {
+                activeHoldBg.style.transition = 'width 1.5s linear'; 
+                activeHoldBg.style.width = '100%';
+            }
+            
+            holdTimer = setTimeout(() => { 
+                // Eksekusi API
+                actionCallback(); 
+                // Kembalikan tombol ke kondisi semula dengan aman
+                if(activeHoldBg) {
+                    activeHoldBg.style.transition = 'width 0.2s ease-out'; 
+                    activeHoldBg.style.width = '0%';
+                    activeHoldBg = null;
+                }
+            }, 1500);
         }
+
         function cancelHold(e) {
-            clearTimeout(holdTimer); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 0.2s ease-out'; bg.style.width = '0%';
+            clearTimeout(holdTimer); 
+            // Meskipun memori event 'e' terhapus oleh HP, kita masih punya DOM-nya!
+            if(activeHoldBg) {
+                activeHoldBg.style.transition = 'width 0.2s ease-out'; 
+                activeHoldBg.style.width = '0%';
+                activeHoldBg = null;
+            }
         }
     </script>
 </body>
