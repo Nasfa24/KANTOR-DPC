@@ -15,7 +15,6 @@
     <div class="flex justify-between items-center mb-4">
         <h1 class="font-black text-xl text-[var(--primary)]">Hi, <span id="staffName">Staf</span></h1>
         <div class="flex gap-2">
-            <!-- TOMBOL REFRESH BARU -->
             <button onclick="refreshData()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i id="iconRefresh" class="fa-solid fa-rotate-right"></i></button>
             <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
@@ -35,80 +34,170 @@
         <p id="qrIDLabel" class="text-sm font-black text-gray-400 tracking-widest mt-2"></p>
     </div>
 
+    <!-- UI REVOLUSI ABSENSI (MASUK/PULANG/TUGAS LUAR + SELFIE) -->
     <div class="card-primary p-6">
-        <h3 class="text-lg font-black mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-location-dot text-[var(--orange)] mr-2"></i> Presensi Kehadiran</h3>
-        <div id="radarContainer" class="radar-box mb-4"><div class="radar-ripple"></div><div class="radar-core"></div></div>
-        <p id="gpsStatus" class="text-center text-sm font-bold text-[var(--yellow)] mb-4">Pindai lokasi Anda untuk absen.</p>
-        <button id="btnScanGPS" onclick="scanLocation()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2 rounded-xl"><i class="fa-solid fa-satellite-dish mr-2"></i> PINDAI LOKASI</button>
-        <button id="btnAbsen" style="display: none;" 
-                class="hold-btn w-full bg-gray-900 border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
-                onmousedown="startHold(event, executeAbsen)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
-                ontouchstart="startHold(event, executeAbsen)" ontouchend="cancelHold(event)">
-            <div class="hold-bg" style="background-color: var(--yellow);"></div>
-            <span class="hold-text text-white"><i class="fa-solid fa-fingerprint mr-2"></i> Tahan untuk Absen</span>
-        </button>
+        <div class="flex justify-between border-b border-white/20 pb-3 mb-4">
+            <h3 class="text-lg font-black"><i class="fa-solid fa-location-dot text-[var(--orange)] mr-2"></i> Presensi</h3>
+            <span id="labelStatusAbsen" class="bg-[var(--yellow)] text-black text-[10px] font-black py-1 px-3 rounded-full flex items-center shadow-lg">Cek Status...</span>
+        </div>
+
+        <div id="panelPersiapanAbsen">
+            <!-- Pilihan Lokasi -->
+            <div class="mb-4">
+                <label class="text-xs font-bold text-[var(--yellow)] mb-1 block">Pilih Lokasi Kerja:</label>
+                <select id="inputLokasi" onchange="toggleTugasLuar()" class="w-full bg-black/20 border-2 border-white/30 text-white rounded-xl p-3 outline-none font-bold">
+                    <option value="KANTOR" class="text-black">🏢 Di Kantor (Radius 100m)</option>
+                    <option value="LUAR" class="text-black">🚗 Tugas Luar / Dinas</option>
+                </select>
+            </div>
+            
+            <div id="panelTugasLuar" class="mb-4 hidden">
+                <input type="text" id="inputKeterangan" class="w-full bg-black/20 border-2 border-orange-400 text-white rounded-xl p-3 outline-none font-bold" placeholder="Ketik Keterangan (Misal: Meeting Klien)">
+            </div>
+
+            <p id="gpsStatus" class="text-center text-xs font-bold text-gray-200 mb-4">Tekan tombol di bawah untuk verifikasi wajah & lokasi.</p>
+            
+            <button id="btnScanGPS" onclick="startVerification()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2 rounded-xl"><i class="fa-solid fa-camera mr-2"></i> BUKA KAMERA & GPS</button>
+        </div>
+
+        <!-- Panel Kamera Rahasia & Tombol Tahan Absen -->
+        <div id="panelEksekusiAbsen" class="hidden">
+            <div class="relative w-full h-48 bg-black rounded-xl overflow-hidden mb-4 border-4 border-[var(--yellow)] shadow-lg mx-auto">
+                <video id="selfieVideo" autoplay playsinline class="w-full h-full object-cover object-center"></video>
+                <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded">🔴 Live</div>
+            </div>
+            <canvas id="selfieCanvas" style="display:none;"></canvas>
+
+            <button id="btnAbsen" class="hold-btn w-full border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
+                    onmousedown="startHoldAbsen(event)" onmouseup="cancelHoldAbsen(event)" onmouseleave="cancelHoldAbsen(event)"
+                    ontouchstart="startHoldAbsen(event)" ontouchend="cancelHoldAbsen(event)">
+                <div class="hold-bg" style="background-color: var(--yellow);"></div>
+                <span class="hold-text text-[var(--yellow)]" id="txtBtnAbsen"><i class="fa-solid fa-fingerprint mr-2"></i> Tahan untuk Absen</span>
+            </button>
+        </div>
     </div>
 
     <script src="app.js"></script>
     <script>
         const user = requireLogin();
-        let userLat = null, userLon = null;
+        let userLat = null, userLon = null, currentAbsenType = "MASUK", videoStream = null;
 
         if (user) {
             document.getElementById('staffName').innerText = user.nama.split(" ")[0];
             document.getElementById('qrIDLabel').innerText = user.id_user;
             new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 200, height: 200, colorDark: "#000000", colorLight: "#ffffff" });
-            
-            // Tarik data langsung dari server saat halaman pertama dibuka
             refreshData(); 
         }
 
-        // --- SISTEM SINKRONISASI DATA BARU ---
         async function refreshData() {
-            const icon = document.getElementById('iconRefresh');
-            icon.classList.add('fa-spin'); // Putar ikon
+            const icon = document.getElementById('iconRefresh'); icon.classList.add('fa-spin');
             try {
-                // Minta data saldo asli langsung ke Google Sheets (Bypass Local Storage)
+                // Sync Saldo
                 const freshUser = await callAPI("sync_user", { id_user: user.id_user });
-                
-                // Update Local Storage dengan data baru
                 localStorage.setItem('userSession', JSON.stringify(freshUser));
                 user.saldo = freshUser.saldo;
-                
-                // Update UI Layar
                 document.getElementById('saldoStaff').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(user.saldo);
+                
+                // Sync Status Absen Hari Ini
+                const absenInfo = await callAPI("cek_status_absen", { id_user: user.id_user });
+                const lbl = document.getElementById('labelStatusAbsen');
+                const btnPanel = document.getElementById('panelPersiapanAbsen');
+                
+                if(absenInfo.status === "BELUM_ABSEN") {
+                    lbl.innerText = "BELUM ABSEN MASUK"; lbl.style.backgroundColor = "var(--orange)"; lbl.style.color = "white";
+                    currentAbsenType = "MASUK";
+                    document.getElementById('txtBtnAbsen').innerHTML = `<i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Tahan Absen Masuk`;
+                } else if(absenInfo.status === "SUDAH_MASUK") {
+                    lbl.innerText = `MASUK JAM ${absenInfo.waktu_masuk}`; lbl.style.backgroundColor = "var(--yellow)"; lbl.style.color = "black";
+                    currentAbsenType = "PULANG";
+                    document.getElementById('txtBtnAbsen').innerHTML = `<i class="fa-solid fa-person-walking-arrow-right mr-2"></i> Tahan Absen Pulang`;
+                } else if(absenInfo.status === "SELESAI") {
+                    lbl.innerText = `SELESAI KERJA`; lbl.style.backgroundColor = "white"; lbl.style.color = "var(--primary)";
+                    btnPanel.innerHTML = `<div class="text-center p-4 bg-white/10 rounded-xl"><i class="fa-solid fa-check-double text-3xl mb-2 text-white"></i><p class="text-sm font-bold text-white">Anda sudah Absen Masuk & Pulang hari ini.</p></div>`;
+                }
             } catch (err) { console.error("Gagal sinkronisasi", err); }
-            icon.classList.remove('fa-spin'); // Berhenti putar
+            icon.classList.remove('fa-spin');
         }
 
-        function scanLocation() {
-            const status = document.getElementById('gpsStatus'), radar = document.getElementById('radarContainer'), btnScan = document.getElementById('btnScanGPS'), btnAbsen = document.getElementById('btnAbsen');
+        function toggleTugasLuar() {
+            const val = document.getElementById('inputLokasi').value;
+            if(val === "LUAR") document.getElementById('panelTugasLuar').classList.remove('hidden');
+            else document.getElementById('panelTugasLuar').classList.add('hidden');
+        }
+
+        function startVerification() {
             if (!navigator.geolocation) return Swal.fire("Error", "GPS tidak didukung", "error");
-            radar.classList.add('active'); status.innerText = "Mencari satelit..."; btnScan.style.display = 'none';
+            
+            const btnScan = document.getElementById('btnScanGPS');
+            const status = document.getElementById('gpsStatus');
+            btnScan.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Mengunci..."; btnScan.disabled = true;
+            
             navigator.geolocation.getCurrentPosition(
-                (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; radar.classList.remove('active'); status.innerHTML = `<i class='fa-solid fa-check-circle'></i> Lokasi terkunci.`; btnAbsen.style.display = 'block'; },
-                (err) => { radar.classList.remove('active'); btnScan.style.display = 'block'; Swal.fire("GPS Gagal", "Gagal/ditolak.", "error"); status.innerText = "Gagal memindai."; },
+                async (pos) => { 
+                    userLat = pos.coords.latitude; userLon = pos.coords.longitude; 
+                    
+                    // Buka Kamera Depan
+                    try {
+                        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                        const video = document.getElementById('selfieVideo');
+                        video.srcObject = videoStream;
+                        
+                        document.getElementById('panelPersiapanAbsen').classList.add('hidden');
+                        document.getElementById('panelEksekusiAbsen').classList.remove('hidden');
+                    } catch(e) {
+                        Swal.fire("Kamera Gagal", "Izinkan akses kamera untuk mengambil foto bukti kehadiran.", "error");
+                        btnScan.innerHTML = "BUKA KAMERA & GPS"; btnScan.disabled = false;
+                    }
+                },
+                (err) => { btnScan.innerHTML = "BUKA KAMERA & GPS"; btnScan.disabled = false; Swal.fire("GPS Gagal", "Izinkan lokasi.", "error"); },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
 
-        async function executeAbsen() {
-            try {
-                await callAPI("absen_masuk", { id_user: user.id_user, lat: userLat, lon: userLon });
-                Swal.fire({ icon: 'success', title: 'Absen Diterima!'});
-                document.getElementById('btnAbsen').style.display = 'none'; document.getElementById('gpsStatus').innerText = "Sudah absen hari ini.";
-            } catch (err) { document.getElementById('btnAbsen').style.display = 'none'; document.getElementById('btnScanGPS').style.display = 'block'; }
-        }
-
+        // --- ENGINE TAHAN ABSEN (CAPTURE FOTO + API) ---
         let holdTimer, activeHoldBg = null;
-        function startHold(e, actionCallback) {
+        function startHoldAbsen(e) {
             e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
             if(activeHoldBg) { activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
-            holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500);
+            
+            holdTimer = setTimeout(async () => { 
+                cancelHoldAbsen(e); 
+                
+                // 1. Ambil Snapshot dari Video (Kompres Ukuran agar muat di Excel)
+                const video = document.getElementById('selfieVideo');
+                const canvas = document.getElementById('selfieCanvas');
+                canvas.width = 240; canvas.height = 320; // Resolusi kecil
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const base64Foto = canvas.toDataURL('image/jpeg', 0.5); // Kompresi 50%
+                
+                // Matikan Kamera
+                if(videoStream) videoStream.getTracks().forEach(track => track.stop());
+
+                const lokasi = document.getElementById('inputLokasi').value;
+                const keterangan = document.getElementById('inputKeterangan').value || "";
+
+                if(lokasi === "LUAR" && keterangan.trim() === "") {
+                    return Swal.fire("Peringatan", "Wajib isi keterangan Tugas Luar!", "warning").then(()=>window.location.reload());
+                }
+
+                // Munculkan Loading Swal yang Tidak Bisa Diclose
+                Swal.fire({ title: 'Merekam Kehadiran...', text: 'Mengirim Foto Bukti & GPS', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+                // 2. Tembak API
+                try {
+                    await callAPI("eksekusi_absen", { 
+                        id_user: user.id_user, lat: userLat, lon: userLon, 
+                        jenis: currentAbsenType, lokasi: lokasi, keterangan: keterangan, foto: base64Foto 
+                    });
+                    Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Absen dan Foto Bukti tersimpan.'}).then(()=> window.location.reload());
+                } catch (err) { Swal.fire("Gagal", err.message, "error").then(()=>window.location.reload()); }
+
+            }, 1500);
         }
-        function cancelHold(e) {
+        function cancelHoldAbsen(e) {
             clearTimeout(holdTimer); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = '#fff'; activeHoldBg = null; }
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = activeHoldBg.style.backgroundColor; activeHoldBg = null; }
         }
     </script>
 </body>
