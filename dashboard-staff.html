@@ -12,22 +12,20 @@
 </head>
 <body class="p-4 pb-20">
 
-    <!-- Navbar Global -->
     <div class="flex justify-between items-center mb-4">
         <h1 class="font-black text-xl text-[var(--primary)]">Hi, <span id="staffName">Staf</span></h1>
         <div class="flex gap-2">
-            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-rotate-right"></i></button>
+            <!-- TOMBOL REFRESH BARU -->
+            <button onclick="refreshData()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i id="iconRefresh" class="fa-solid fa-rotate-right"></i></button>
             <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
     </div>
 
-    <!-- Info Saldo -->
     <div class="card-primary p-6 mb-6 text-center">
         <p class="text-[var(--yellow)] text-sm font-bold tracking-widest mb-1">SISA KUOTA MAKAN</p>
         <h1 id="saldoStaff" class="text-4xl font-black mb-2">Rp 0</h1>
     </div>
 
-    <!-- Modul QR Jajan -->
     <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
         <h3 class="text-lg font-black mb-2 text-[var(--primary)]"><i class="fa-solid fa-qrcode text-[var(--orange)] mr-2"></i> QR Jajan UMKM</h3>
         <p class="text-xs text-gray-500 font-bold mb-4">Tunjukkan kode ini ke Mitra untuk bayar.</p>
@@ -37,17 +35,11 @@
         <p id="qrIDLabel" class="text-sm font-black text-gray-400 tracking-widest mt-2"></p>
     </div>
 
-    <!-- Modul GPS -->
     <div class="card-primary p-6">
         <h3 class="text-lg font-black mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-location-dot text-[var(--orange)] mr-2"></i> Presensi Kehadiran</h3>
-        <div id="radarContainer" class="radar-box mb-4">
-            <div class="radar-ripple"></div>
-            <div class="radar-core"></div>
-        </div>
+        <div id="radarContainer" class="radar-box mb-4"><div class="radar-ripple"></div><div class="radar-core"></div></div>
         <p id="gpsStatus" class="text-center text-sm font-bold text-[var(--yellow)] mb-4">Pindai lokasi Anda untuk absen.</p>
-        
-        <button id="btnScanGPS" onclick="scanLocation()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2"><i class="fa-solid fa-satellite-dish mr-2"></i> PINDAI LOKASI</button>
-        
+        <button id="btnScanGPS" onclick="scanLocation()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2 rounded-xl"><i class="fa-solid fa-satellite-dish mr-2"></i> PINDAI LOKASI</button>
         <button id="btnAbsen" style="display: none;" 
                 class="hold-btn w-full bg-gray-900 border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
                 onmousedown="startHold(event, executeAbsen)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
@@ -64,9 +56,29 @@
 
         if (user) {
             document.getElementById('staffName').innerText = user.nama.split(" ")[0];
-            document.getElementById('saldoStaff').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(user.saldo);
             document.getElementById('qrIDLabel').innerText = user.id_user;
             new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 200, height: 200, colorDark: "#000000", colorLight: "#ffffff" });
+            
+            // Tarik data langsung dari server saat halaman pertama dibuka
+            refreshData(); 
+        }
+
+        // --- SISTEM SINKRONISASI DATA BARU ---
+        async function refreshData() {
+            const icon = document.getElementById('iconRefresh');
+            icon.classList.add('fa-spin'); // Putar ikon
+            try {
+                // Minta data saldo asli langsung ke Google Sheets (Bypass Local Storage)
+                const freshUser = await callAPI("sync_user", { id_user: user.id_user });
+                
+                // Update Local Storage dengan data baru
+                localStorage.setItem('userSession', JSON.stringify(freshUser));
+                user.saldo = freshUser.saldo;
+                
+                // Update UI Layar
+                document.getElementById('saldoStaff').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(user.saldo);
+            } catch (err) { console.error("Gagal sinkronisasi", err); }
+            icon.classList.remove('fa-spin'); // Berhenti putar
         }
 
         function scanLocation() {
@@ -74,10 +86,7 @@
             if (!navigator.geolocation) return Swal.fire("Error", "GPS tidak didukung", "error");
             radar.classList.add('active'); status.innerText = "Mencari satelit..."; btnScan.style.display = 'none';
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    userLat = pos.coords.latitude; userLon = pos.coords.longitude;
-                    radar.classList.remove('active'); status.innerHTML = `<i class='fa-solid fa-check-circle'></i> Lokasi terkunci.`; btnAbsen.style.display = 'block';
-                },
+                (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; radar.classList.remove('active'); status.innerHTML = `<i class='fa-solid fa-check-circle'></i> Lokasi terkunci.`; btnAbsen.style.display = 'block'; },
                 (err) => { radar.classList.remove('active'); btnScan.style.display = 'block'; Swal.fire("GPS Gagal", "Gagal/ditolak.", "error"); status.innerText = "Gagal memindai."; },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -94,14 +103,12 @@
         let holdTimer, activeHoldBg = null;
         function startHold(e, actionCallback) {
             e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; 
-                               e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
             holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500);
         }
         function cancelHold(e) {
             clearTimeout(holdTimer); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; 
-                               activeHoldBg.nextElementSibling.style.color = '#fff'; activeHoldBg = null; }
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = '#fff'; activeHoldBg = null; }
         }
     </script>
 </body>
