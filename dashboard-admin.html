@@ -17,39 +17,47 @@
     <div class="flex justify-between items-center mb-4">
         <h1 class="font-black text-xl text-[var(--primary)]">Ka. Kantor</h1>
         <div class="flex gap-2">
-            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md"><i class="fa-solid fa-rotate-right"></i></button>
-            <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md"><i class="fa-solid fa-power-off"></i></button>
+            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
     </div>
 
-    <!-- Info Kas Besar -->
-    <div class="card-primary p-6 mb-4 text-center">
-        <p class="text-[var(--yellow)] text-sm font-bold tracking-widest mb-1">TOTAL SALDO KAS</p>
-        <h1 id="saldoKas" class="text-4xl font-black">Rp 0</h1>
+    <!-- UI BARU: Info Dual Saldo -->
+    <div class="card-primary p-5 mb-6 text-center shadow-lg">
+        <div class="flex justify-between items-center mb-3 border-b border-white/20 pb-3">
+            <div class="text-left w-1/2 pr-2">
+                <p class="text-[var(--yellow)] text-[10px] font-black tracking-widest mb-1 uppercase">Total Kas Kantor</p>
+                <h1 id="saldoKas" class="text-2xl font-black truncate">Rp 0</h1>
+            </div>
+            <div class="text-right w-1/2 border-l border-white/20 pl-3">
+                <p class="text-[var(--orange)] text-[10px] font-black tracking-widest mb-1 uppercase">Sisa Kuota Pribadi</p>
+                <h1 id="saldoPribadi" class="text-xl font-black text-gray-200 truncate">Rp 0</h1>
+            </div>
+        </div>
+        <p class="text-[10px] text-white opacity-80 uppercase tracking-widest">Pusat Komando Finansial</p>
     </div>
 
     <!-- Navigasi 3 Tab -->
     <div class="flex gap-1 mb-6 bg-gray-100 p-1 rounded-2xl overflow-x-auto">
-        <button onclick="switchTab('tab-operasional')" id="btn-tab-operasional" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs bg-white shadow text-[var(--primary)] min-w-[100px]"><i class="fa-solid fa-user-tie"></i> Pribadi</button>
-        <button onclick="switchTab('tab-bayar')" id="btn-tab-bayar" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px]"><i class="fa-solid fa-qrcode"></i> Bayar Mitra</button>
-        <button onclick="switchTab('tab-pantau')" id="btn-tab-pantau" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px]"><i class="fa-solid fa-users"></i> Monitor Staf</button>
+        <button onclick="switchTab('tab-operasional')" id="btn-tab-operasional" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs bg-white shadow text-[var(--primary)] min-w-[100px] transition-all"><i class="fa-solid fa-user-tie"></i> Pribadi</button>
+        <button onclick="switchTab('tab-bayar')" id="btn-tab-bayar" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px] transition-all"><i class="fa-solid fa-qrcode"></i> Bayar Mitra</button>
+        <button onclick="switchTab('tab-pantau')" id="btn-tab-pantau" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px] transition-all"><i class="fa-solid fa-users"></i> Monitor Staf</button>
     </div>
 
-    <!-- TAB 1: OPERASIONAL PRIBADI (ADMIN SEBAGAI STAF) -->
+    <!-- TAB 1: OPERASIONAL PRIBADI -->
     <div id="tab-operasional" class="tab-content active">
         <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
-            <h3 class="text-lg font-black mb-2 text-[var(--primary)]"><i class="fa-solid fa-qrcode text-[var(--orange)] mr-2"></i> QR Jajan Admin</h3>
+            <h3 class="text-lg font-black mb-2 text-[var(--primary)]"><i class="fa-solid fa-qrcode text-[var(--orange)] mr-2"></i> QR Jajan Anda</h3>
             <div class="bg-white p-2 rounded-2xl inline-block shadow-inner mx-auto border border-gray-200">
                 <div id="qrcodeBox"></div>
             </div>
             <p id="qrIDLabel" class="text-sm font-black text-gray-400 mt-2"></p>
-            <p class="text-xs font-bold text-gray-500 mt-2">Sisa Kuota: <span id="saldoPribadi" class="text-[var(--primary)]"></span></p>
         </div>
         
         <div class="card-primary p-6">
             <h3 class="text-lg font-black mb-4"><i class="fa-solid fa-location-dot text-[var(--orange)] mr-2"></i> Presensi</h3>
             <p id="gpsStatus" class="text-center text-sm font-bold text-[var(--yellow)] mb-4">Pindai lokasi Anda.</p>
-            <button id="btnScanGPS" onclick="scanLocation()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2"><i class="fa-solid fa-satellite-dish mr-2"></i> PINDAI LOKASI</button>
+            <button id="btnScanGPS" onclick="scanLocation()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2 rounded-xl"><i class="fa-solid fa-satellite-dish mr-2"></i> PINDAI LOKASI</button>
             <button id="btnAbsen" style="display: none;" 
                     class="hold-btn w-full border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
                     onmousedown="startHold(event, executeAbsen, 'var(--yellow)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
@@ -65,11 +73,10 @@
         <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
             <h3 class="text-lg font-black mb-4 text-[var(--primary)]"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Penagihan Mitra</h3>
             <div id="reader" class="mb-4 hidden"></div>
-            <button id="btnStartScanMitra" onclick="startScannerMitra()" class="btn-orange w-full py-4 text-lg"><i class="fa-solid fa-qrcode mr-2"></i> BUKA KAMERA</button>
+            <button id="btnStartScanMitra" onclick="startScannerMitra()" class="btn-orange w-full py-4 text-lg rounded-xl"><i class="fa-solid fa-qrcode mr-2"></i> BUKA KAMERA</button>
             <button id="btnStopScanMitra" onclick="stopScannerMitra()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold hidden">Tutup Kamera</button>
         </div>
 
-        <!-- Panel Detail Tagihan Hasil Scan -->
         <div id="panelBayarMitra" class="card-primary p-6 hidden">
             <h2 class="text-2xl font-black mb-1 text-[var(--yellow)]">Tagihan <span id="idKlaimTxt"></span></h2>
             <p class="text-sm font-bold mb-4">Mitra: <span id="idMitraTxt"></span></p>
@@ -103,26 +110,33 @@
 
     <script src="app.js"></script>
     <script>
+        // ==========================================
+        // BUG FIX: Pindahkan deklarasi formatRp ke Paling Atas (Hoisting)
+        // ==========================================
         const user = requireLogin();
+        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
+        
         let html5QrcodeScanner, scannedKlaimID = null;
 
+        // Inisialisasi Saat Halaman Dimuat
         if (user) {
             loadAdminData();
-            // Init QR Pribadi
+            
+            // Render QR Pribadi Admin
             document.getElementById('qrIDLabel').innerText = user.id_user;
             new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 150, height: 150 });
+            
+            // Cetak Saldo Pribadi tanpa error Hoisting
             document.getElementById('saldoPribadi').innerText = formatRp(user.saldo);
         }
-
-        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             
             const btns = ['btn-tab-operasional', 'btn-tab-bayar', 'btn-tab-pantau'];
-            btns.forEach(b => document.getElementById(b).className = "flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px]");
-            document.getElementById('btn-tab-' + tabId.split('-')[1]).className = "flex-1 py-3 px-2 rounded-xl font-bold text-xs bg-white shadow text-[var(--primary)] min-w-[100px]";
+            btns.forEach(b => document.getElementById(b).className = "flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px] transition-all");
+            document.getElementById('btn-tab-' + tabId.split('-')[1]).className = "flex-1 py-3 px-2 rounded-xl font-bold text-xs bg-white shadow text-[var(--primary)] min-w-[100px] transition-all";
         }
 
         // --- FETCH DATA UMUM ---
@@ -134,7 +148,12 @@
                 const listStaf = document.getElementById('listStaf');
                 listStaf.innerHTML = data.staf.map(s => {
                     let warna = s.saldo === 0 ? 'text-red-400' : 'text-[var(--yellow)]';
-                    let waLink = `https://wa.me/${s.no_wa}?text=${encodeURIComponent(`Halo ${s.nama}, info dari Kepala Kantor: Kuota makan UMKM kamu sisa *${formatRp(s.saldo)}*. Jangan lupa digunakan!`)}`;
+                    
+                    // Format WA untuk Admin
+                    let noWa = s.no_wa.toString();
+                    if(noWa.startsWith('0')) noWa = '62' + noWa.substring(1);
+                    let waLink = `https://wa.me/${noWa}?text=${encodeURIComponent(`Halo ${s.nama}, info dari Kepala Kantor: Kuota makan UMKM kamu sisa *${formatRp(s.saldo)}*. Jangan lupa digunakan!`)}`;
+                    
                     return `
                         <div class="flex justify-between items-center p-3 bg-black/20 rounded-xl border border-white/10">
                             <div><p class="font-bold text-white">${s.nama}</p><p class="text-sm font-black ${warna}">${formatRp(s.saldo)}</p></div>
