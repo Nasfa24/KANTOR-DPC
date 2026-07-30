@@ -7,43 +7,96 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .hold-btn { position: relative; overflow: hidden; user-select: none; touch-action: manipulation; }
-        .hold-bg { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #10b981; z-index: 0; }
-        .hold-text { position: relative; z-index: 1; pointer-events: none; }
-        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+    <style>.tab-content { display: none; animation: fadeIn 0.3s; } .tab-content.active { display: block; } @keyframes fadeIn { from{opacity:0} to{opacity:1} }</style>
 </head>
 <body class="p-4 pb-20">
 
-    <div class="glass-card p-6 mb-6 text-center relative overflow-hidden">
-        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-power-off text-xl"></i></button>
-        <p class="text-gray-300 text-xs uppercase tracking-widest mb-1"><i class="fa-solid fa-shield-halved mr-1 text-blue-400"></i> Otoritas Kepala Kantor</p>
-        <h2 id="adminName" class="text-xl font-bold mb-4 text-white">Loading...</h2>
-        <div class="bg-gradient-to-r from-blue-900 to-blue-800 rounded-2xl p-6 border border-blue-400/30 shadow-lg shadow-blue-500/20">
-            <p class="text-blue-200 text-sm mb-1">Total Saldo Kas Kantor</p>
-            <h1 id="saldoKas" class="text-4xl font-extrabold tracking-tight text-white">Rp 0</h1>
+    <div class="flex justify-between items-center mb-4">
+        <h1 class="font-black text-xl text-[var(--primary)]">Ka. Kantor</h1>
+        <div class="flex gap-2">
+            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md"><i class="fa-solid fa-power-off"></i></button>
         </div>
     </div>
 
-    <div class="flex gap-2 mb-6">
-        <button onclick="switchTab('tab-tagihan')" id="btn-tab-tagihan" class="flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all"><i class="fa-solid fa-file-invoice mr-1"></i> Tagihan Mitra</button>
-        <button onclick="switchTab('tab-staf')" id="btn-tab-staf" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all"><i class="fa-solid fa-users mr-1"></i> Pantau Staf</button>
+    <!-- Info Kas Besar -->
+    <div class="card-primary p-6 mb-4 text-center">
+        <p class="text-[var(--yellow)] text-sm font-bold tracking-widest mb-1">TOTAL SALDO KAS</p>
+        <h1 id="saldoKas" class="text-4xl font-black">Rp 0</h1>
     </div>
 
-    <div id="tab-tagihan" class="tab-content active">
-        <div class="glass-card p-6">
-            <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-bell text-orange-400 mr-2"></i> Menunggu Pembayaran</h3>
-            <div id="listTagihan" class="space-y-4"><p class="text-center text-sm text-gray-400 italic py-4">Memuat data tagihan...</p></div>
+    <!-- Navigasi 3 Tab -->
+    <div class="flex gap-1 mb-6 bg-gray-100 p-1 rounded-2xl overflow-x-auto">
+        <button onclick="switchTab('tab-operasional')" id="btn-tab-operasional" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs bg-white shadow text-[var(--primary)] min-w-[100px]"><i class="fa-solid fa-user-tie"></i> Pribadi</button>
+        <button onclick="switchTab('tab-bayar')" id="btn-tab-bayar" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px]"><i class="fa-solid fa-qrcode"></i> Bayar Mitra</button>
+        <button onclick="switchTab('tab-pantau')" id="btn-tab-pantau" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px]"><i class="fa-solid fa-users"></i> Monitor Staf</button>
+    </div>
+
+    <!-- TAB 1: OPERASIONAL PRIBADI (ADMIN SEBAGAI STAF) -->
+    <div id="tab-operasional" class="tab-content active">
+        <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
+            <h3 class="text-lg font-black mb-2 text-[var(--primary)]"><i class="fa-solid fa-qrcode text-[var(--orange)] mr-2"></i> QR Jajan Admin</h3>
+            <div class="bg-white p-2 rounded-2xl inline-block shadow-inner mx-auto border border-gray-200">
+                <div id="qrcodeBox"></div>
+            </div>
+            <p id="qrIDLabel" class="text-sm font-black text-gray-400 mt-2"></p>
+            <p class="text-xs font-bold text-gray-500 mt-2">Sisa Kuota: <span id="saldoPribadi" class="text-[var(--primary)]"></span></p>
+        </div>
+        
+        <div class="card-primary p-6">
+            <h3 class="text-lg font-black mb-4"><i class="fa-solid fa-location-dot text-[var(--orange)] mr-2"></i> Presensi</h3>
+            <p id="gpsStatus" class="text-center text-sm font-bold text-[var(--yellow)] mb-4">Pindai lokasi Anda.</p>
+            <button id="btnScanGPS" onclick="scanLocation()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2"><i class="fa-solid fa-satellite-dish mr-2"></i> PINDAI LOKASI</button>
+            <button id="btnAbsen" style="display: none;" 
+                    class="hold-btn w-full border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
+                    onmousedown="startHold(event, executeAbsen, 'var(--yellow)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
+                    ontouchstart="startHold(event, executeAbsen, 'var(--yellow)')" ontouchend="cancelHold(event)">
+                <div class="hold-bg"></div>
+                <span class="hold-text text-[var(--yellow)]"><i class="fa-solid fa-fingerprint mr-2"></i> Tahan untuk Absen</span>
+            </button>
         </div>
     </div>
 
-    <div id="tab-staf" class="tab-content">
-        <div class="glass-card p-6">
-            <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-chart-pie text-purple-400 mr-2"></i> Sisa Kuota Makan Staf</h3>
+    <!-- TAB 2: BAYAR TAGIHAN MITRA (KAMERA) -->
+    <div id="tab-bayar" class="tab-content">
+        <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
+            <h3 class="text-lg font-black mb-4 text-[var(--primary)]"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Penagihan Mitra</h3>
+            <div id="reader" class="mb-4 hidden"></div>
+            <button id="btnStartScanMitra" onclick="startScannerMitra()" class="btn-orange w-full py-4 text-lg"><i class="fa-solid fa-qrcode mr-2"></i> BUKA KAMERA</button>
+            <button id="btnStopScanMitra" onclick="stopScannerMitra()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold hidden">Tutup Kamera</button>
+        </div>
+
+        <!-- Panel Detail Tagihan Hasil Scan -->
+        <div id="panelBayarMitra" class="card-primary p-6 hidden">
+            <h2 class="text-2xl font-black mb-1 text-[var(--yellow)]">Tagihan <span id="idKlaimTxt"></span></h2>
+            <p class="text-sm font-bold mb-4">Mitra: <span id="idMitraTxt"></span></p>
+            
+            <div class="bg-white text-[var(--dark)] rounded-xl p-4 mb-4">
+                <p class="text-xs font-black text-gray-400 mb-2 border-b pb-1">RINCIAN PEMBELI:</p>
+                <ul id="listRincianTagihan" class="text-sm font-bold space-y-1 mb-3"></ul>
+                
+                <p class="text-xs font-black text-[var(--orange)] mb-1">PESAN DARI MITRA:</p>
+                <p id="chatMitraTxt" class="text-sm italic bg-gray-100 p-2 rounded-lg border-l-4 border-[var(--orange)]"></p>
+            </div>
+
+            <h1 class="text-4xl font-black text-center mb-6 text-[var(--yellow)]" id="totalBayarTxt">Rp 0</h1>
+
+            <button class="hold-btn w-full border-2 border-[var(--orange)] py-4 rounded-xl font-bold shadow-lg"
+                    onmousedown="startHold(event, executeBayarKlaim, 'var(--orange)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
+                    ontouchstart="startHold(event, executeBayarKlaim, 'var(--orange)')" ontouchend="cancelHold(event)">
+                <div class="hold-bg"></div>
+                <span class="hold-text text-[var(--orange)]"><i class="fa-solid fa-check-double mr-2"></i> Tahan Bayar via Kas</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- TAB 3: MONITOR STAF -->
+    <div id="tab-pantau" class="tab-content">
+        <div class="card-primary p-6">
+            <h3 class="text-lg font-black mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-users text-[var(--yellow)] mr-2"></i> Kuota & WhatsApp Staf</h3>
             <div id="listStaf" class="space-y-3"></div>
         </div>
     </div>
@@ -51,89 +104,112 @@
     <script src="app.js"></script>
     <script>
         const user = requireLogin();
-        if (user) { document.getElementById('adminName').innerText = user.nama; loadAdminData(); }
-        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+        let html5QrcodeScanner, scannedKlaimID = null;
 
-        async function loadAdminData() {
-            try {
-                const data = await callAPI("get_admin_data");
-                document.getElementById('saldoKas').innerText = formatRp(data.kas);
-
-                const listTagihan = document.getElementById('listTagihan');
-                if (data.klaim.length === 0) {
-                    listTagihan.innerHTML = `<div class="text-center p-6 bg-white/5 rounded-xl border border-white/10"><i class="fa-solid fa-check-circle text-3xl text-emerald-500 mb-2"></i><p class="text-sm text-gray-300">Semua tagihan bersih. Tidak ada antrean.</p></div>`;
-                } else {
-                    listTagihan.innerHTML = data.klaim.map(k => `
-                        <div class="bg-gray-800 rounded-xl p-4 border border-orange-500/30">
-                            <div class="flex justify-between items-start mb-2">
-                                <div><p class="text-xs text-gray-400">ID Mitra: ${k.id_mitra}</p><h4 class="font-bold text-white text-lg">${k.id_klaim}</h4></div>
-                                <span class="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-md font-bold">Pending</span>
-                            </div>
-                            <h2 class="text-2xl font-black text-orange-400 mb-3">${formatRp(k.nominal)}</h2>
-                            <button class="hold-btn w-full bg-gray-900 border border-emerald-500/30 py-3 rounded-lg font-bold text-sm"
-                                    onmousedown="startHold(event, () => eksekusiBayarKlaim('${k.id_klaim}', ${k.nominal}))" 
-                                    onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
-                                    ontouchstart="startHold(event, () => eksekusiBayarKlaim('${k.id_klaim}', ${k.nominal}))" 
-                                    ontouchend="cancelHold(event)">
-                                <div class="hold-bg"></div>
-                                <span class="hold-text text-emerald-400"><i class="fa-solid fa-check-double mr-1"></i> Tahan untuk Bayar via Kas</span>
-                            </button>
-                        </div>
-                    `).join('');
-                }
-
-                const listStaf = document.getElementById('listStaf');
-                listStaf.innerHTML = data.staf.map(s => {
-                    let warna = s.saldo === 0 ? 'text-red-400' : (s.saldo < 50000 ? 'text-yellow-400' : 'text-emerald-400');
-                    let waLink = `https://wa.me/${s.no_wa}?text=${encodeURIComponent(`Halo ${s.nama}, info dari Kepala Kantor: Kuota makan UMKM kamu sisa *${formatRp(s.saldo)}*. Jangan lupa digunakan ya!`)}`;
-                    return `
-                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/10">
-                            <div><p class="font-bold text-white">${s.nama}</p><p class="text-sm font-black ${warna}">${formatRp(s.saldo)}</p></div>
-                            <a href="${waLink}" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 h-10 w-10 rounded-full flex justify-center items-center text-white shadow-lg shadow-emerald-600/30"><i class="fa-brands fa-whatsapp text-xl"></i></a>
-                        </div>
-                    `;
-                }).join('');
-            } catch (error) {}
+        if (user) {
+            loadAdminData();
+            // Init QR Pribadi
+            document.getElementById('qrIDLabel').innerText = user.id_user;
+            new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 150, height: 150 });
+            document.getElementById('saldoPribadi').innerText = formatRp(user.saldo);
         }
 
-        async function eksekusiBayarKlaim(idKlaim, nominal) {
-            try {
-                await callAPI("admin_bayar_klaim", { id_klaim: idKlaim, id_admin: user.id_user });
-                Swal.fire({ icon: 'success', title: 'Buku Kas Diperbarui!', text: `Pembayaran ${formatRp(nominal)} berhasil.`, confirmButtonColor: '#10b981' }).then(() => loadAdminData());
-            } catch (error) {}
-        }
+        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            if (tabId === 'tab-tagihan') {
-                document.getElementById('btn-tab-tagihan').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all";
-                document.getElementById('btn-tab-staf').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all";
-            } else {
-                document.getElementById('btn-tab-staf').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all";
-                document.getElementById('btn-tab-tagihan').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all";
-            }
+            
+            const btns = ['btn-tab-operasional', 'btn-tab-bayar', 'btn-tab-pantau'];
+            btns.forEach(b => document.getElementById(b).className = "flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px]");
+            document.getElementById('btn-tab-' + tabId.split('-')[1]).className = "flex-1 py-3 px-2 rounded-xl font-bold text-xs bg-white shadow text-[var(--primary)] min-w-[100px]";
         }
 
-        // =========================================================
-        // MEMORY-SAFE HOLD ENGINE
-        // =========================================================
-        let holdTimer;
-        let activeHoldBg = null;
-
-        function startHold(e, actionCallback) {
-            e.preventDefault(); 
-            activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; }
-            holdTimer = setTimeout(() => { 
-                actionCallback(); 
-                if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg = null; }
-            }, 1500);
+        // --- FETCH DATA UMUM ---
+        async function loadAdminData() {
+            try {
+                const data = await callAPI("get_admin_data");
+                document.getElementById('saldoKas').innerText = formatRp(data.kas);
+                
+                const listStaf = document.getElementById('listStaf');
+                listStaf.innerHTML = data.staf.map(s => {
+                    let warna = s.saldo === 0 ? 'text-red-400' : 'text-[var(--yellow)]';
+                    let waLink = `https://wa.me/${s.no_wa}?text=${encodeURIComponent(`Halo ${s.nama}, info dari Kepala Kantor: Kuota makan UMKM kamu sisa *${formatRp(s.saldo)}*. Jangan lupa digunakan!`)}`;
+                    return `
+                        <div class="flex justify-between items-center p-3 bg-black/20 rounded-xl border border-white/10">
+                            <div><p class="font-bold text-white">${s.nama}</p><p class="text-sm font-black ${warna}">${formatRp(s.saldo)}</p></div>
+                            <a href="${waLink}" target="_blank" class="w-10 h-10 rounded-full bg-[var(--orange)] flex justify-center items-center text-white shadow-lg"><i class="fa-brands fa-whatsapp text-xl"></i></a>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {}
         }
 
+        // --- SCANNER ADMIN UNTUK BAYAR MITRA ---
+        function startScannerMitra() {
+            document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScanMitra').classList.add('hidden'); document.getElementById('btnStopScanMitra').classList.remove('hidden'); document.getElementById('panelBayarMitra').classList.add('hidden'); 
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccessMitra, ()=>{})
+            .catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScannerMitra(); });
+        }
+        function stopScannerMitra() {
+            if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
+            document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScanMitra').classList.remove('hidden'); document.getElementById('btnStopScanMitra').classList.add('hidden');
+        }
+        async function onScanSuccessMitra(decodedMitraID) {
+            stopScannerMitra();
+            try {
+                const tagihan = await callAPI("cek_tagihan_mitra", { id_mitra: decodedMitraID });
+                scannedKlaimID = tagihan.id_klaim;
+                document.getElementById('idKlaimTxt').innerText = tagihan.id_klaim;
+                document.getElementById('idMitraTxt').innerText = decodedMitraID;
+                document.getElementById('totalBayarTxt').innerText = formatRp(tagihan.nominal);
+                document.getElementById('chatMitraTxt').innerText = tagihan.catatan;
+                
+                document.getElementById('listRincianTagihan').innerHTML = tagihan.rincian.map(r => `<li class="flex justify-between border-b border-gray-200 pb-1"><span>${r.nama}</span> <span class="text-[var(--primary)]">${formatRp(r.nominal)}</span></li>`).join('');
+                
+                document.getElementById('panelBayarMitra').classList.remove('hidden');
+                new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
+            } catch (error) { Swal.fire("Penolakan Sistem", error.message || "QR Ditolak.", "error"); }
+        }
+
+        async function executeBayarKlaim() {
+            try {
+                await callAPI("admin_bayar_klaim", { id_klaim: scannedKlaimID, id_admin: user.id_user });
+                Swal.fire({ icon: 'success', title: 'Kas Dipotong!', text: `Pembayaran berhasil.`, confirmButtonColor: '#03754c' });
+                document.getElementById('panelBayarMitra').classList.add('hidden');
+                loadAdminData();
+            } catch (error) {}
+        }
+
+        // --- GPS ADMIN (SEBAGAI STAF) ---
+        let userLat = null, userLon = null;
+        function scanLocation() {
+            if (!navigator.geolocation) return Swal.fire("Error", "GPS tidak didukung", "error");
+            document.getElementById('btnScanGPS').style.display = 'none'; document.getElementById('gpsStatus').innerText = "Mencari satelit...";
+            navigator.geolocation.getCurrentPosition(
+                (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; document.getElementById('gpsStatus').innerHTML = `<i class='fa-solid fa-check-circle'></i> Lokasi terkunci.`; document.getElementById('btnAbsen').style.display = 'block'; },
+                (err) => { document.getElementById('btnScanGPS').style.display = 'block'; Swal.fire("Gagal", "Akses ditolak", "error"); }, { enableHighAccuracy: true }
+            );
+        }
+        async function executeAbsen() {
+            try {
+                await callAPI("absen_masuk", { id_user: user.id_user, lat: userLat, lon: userLon });
+                Swal.fire({ icon: 'success', title: 'Absen Diterima!'});
+                document.getElementById('btnAbsen').style.display = 'none'; document.getElementById('gpsStatus').innerText = "Sudah absen.";
+            } catch (err) { document.getElementById('btnAbsen').style.display = 'none'; document.getElementById('btnScanGPS').style.display = 'block'; }
+        }
+
+        // --- HOLD ENGINE ---
+        let holdTimer, activeHoldBg = null;
+        function startHold(e, actionCallback, color) {
+            e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
+            if(activeHoldBg) { activeHoldBg.style.backgroundColor = color; activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
+            holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500);
+        }
         function cancelHold(e) {
             clearTimeout(holdTimer); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg = null; }
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = activeHoldBg.style.backgroundColor; activeHoldBg = null; }
         }
     </script>
 </body>
