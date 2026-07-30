@@ -3,90 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kasir Mitra - SuperApp</title>
+    <title>Mitra - SuperApp</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .hold-btn { position: relative; overflow: hidden; user-select: none; touch-action: manipulation; }
-        .hold-bg { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #f97316; z-index: 0; }
-        .hold-text { position: relative; z-index: 1; pointer-events: none; }
-        #reader { width: 100%; border-radius: 16px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2) !important; }
-        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
+    <style>.tab-content { display: none; animation: fadeIn 0.3s; } .tab-content.active { display: block; } @keyframes fadeIn { from{opacity:0} to{opacity:1} }</style>
 </head>
 <body class="p-4 pb-20">
 
-    <div class="glass-card p-6 mb-6 text-center relative overflow-hidden">
-        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-power-off text-xl"></i></button>
-        <p class="text-gray-300 text-sm mb-1">POS System Mitra,</p>
-        <h2 id="mitraName" class="text-2xl font-bold mb-2 text-orange-400">Loading...</h2>
+    <div class="flex justify-between items-center mb-4">
+        <h1 class="font-black text-xl text-[var(--primary)]">Toko <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
+        <div class="flex gap-2">
+            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md"><i class="fa-solid fa-power-off"></i></button>
+        </div>
     </div>
 
-    <!-- Navigasi -->
-    <div class="flex gap-2 mb-6">
-        <button onclick="switchTab('tab-kasir')" id="btn-tab-kasir" class="flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all"><i class="fa-solid fa-qrcode mr-1"></i> Kasir</button>
-        <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Pencairan</button>
+    <div class="flex gap-2 mb-4 bg-gray-100 p-1 rounded-2xl">
+        <button onclick="switchTab('tab-kasir')" id="btn-tab-kasir" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)]"><i class="fa-solid fa-qrcode mr-1"></i> Kasir</button>
+        <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm text-gray-400"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Penagihan</button>
     </div>
 
     <!-- TAB 1: KASIR -->
     <div id="tab-kasir" class="tab-content active">
-        <div class="glass-card p-6 mb-6 text-center">
-            <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-camera text-blue-400 mr-2"></i> Scan QR Pelanggan</h3>
+        <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
+            <h3 class="text-lg font-black mb-4"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Pembeli</h3>
             <div id="reader" class="mb-4 hidden"></div>
-            <button id="btnStartScan" onclick="startScanner()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold shadow-lg"><i class="fa-solid fa-qrcode mr-2"></i> Buka Kamera Scanner</button>
-            <button id="btnStopScan" onclick="stopScanner()" class="w-full bg-red-600 hover:bg-red-500 py-3 rounded-xl font-bold shadow-lg hidden">Tutup Kamera</button>
+            <button id="btnStartScan" onclick="startScanner()" class="btn-orange w-full py-4 text-lg"><i class="fa-solid fa-qrcode mr-2"></i> BUKA KAMERA</button>
+            <button id="btnStopScan" onclick="stopScanner()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold hidden">Tutup Kamera</button>
         </div>
 
-        <div id="panelTagihan" class="glass-card p-6 hidden">
-            <div class="bg-blue-900/50 p-4 rounded-xl border border-blue-500/30 mb-4 text-center">
-                <p class="text-xs text-gray-400">Pelanggan Terdeteksi:</p>
-                <h2 id="namaPelanggan" class="text-xl font-bold text-white mb-1">Nama</h2>
-                <p class="text-sm">Saldo Maksimal: <span id="saldoPelanggan" class="font-bold text-emerald-400">Rp 0</span></p>
+        <div id="panelTagihan" class="card-primary p-6 hidden">
+            <div class="bg-black/20 p-4 rounded-xl mb-4 text-center">
+                <p class="text-xs text-[var(--yellow)] font-bold">Pelanggan Terdeteksi:</p>
+                <h2 id="namaPelanggan" class="text-2xl font-black mb-1">Nama</h2>
+                <p class="text-sm font-bold">Saldo: <span id="saldoPelanggan">Rp 0</span></p>
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 text-center">Masukkan Nominal (Rp)</label>
-                    <input type="tel" id="inputNominal" class="input-mobile !text-orange-400 !font-bold !text-2xl" placeholder="0" autocomplete="off">
+                    <label class="block text-xs font-bold mb-2 text-center text-[var(--yellow)]">Masukkan Tagihan (Rp)</label>
+                    <input type="tel" id="inputNominal" class="input-mobile text-center font-black text-2xl" placeholder="0" autocomplete="off">
                 </div>
-                <button class="hold-btn w-full bg-gray-800 border border-orange-500/30 py-4 rounded-xl font-bold shadow-lg mt-4"
-                        onmousedown="startHold(event, executeTagihan)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
-                        ontouchstart="startHold(event, executeTagihan)" ontouchend="cancelHold(event)">
+                <button class="hold-btn w-full border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
+                        onmousedown="startHold(event, executeTagihan, 'var(--yellow)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
+                        ontouchstart="startHold(event, executeTagihan, 'var(--yellow)')" ontouchend="cancelHold(event)">
                     <div class="hold-bg"></div>
-                    <span class="hold-text text-orange-400"><i class="fa-solid fa-file-invoice-dollar mr-2"></i> Tahan untuk Tagih</span>
+                    <span class="hold-text text-[var(--yellow)]"><i class="fa-solid fa-check-double mr-2"></i> Tahan untuk Tagih</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- TAB 2: PENCAIRAN -->
+    <!-- TAB 2: PENAGIHAN & CHAT -->
     <div id="tab-klaim" class="tab-content">
-        <div class="glass-card p-6 text-center">
-            <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-wallet text-emerald-400 mr-2"></i> Dana Bisa Diklaim</h3>
-            <p class="text-xs text-gray-400 mb-2">Total transaksi yang belum ditagihkan ke Kantor</p>
-            <h1 id="totalUnclaimed" class="text-4xl font-black text-emerald-400 mb-6">Rp 0</h1>
-            <button id="btnKlaim" class="hold-btn w-full bg-gray-800 border border-emerald-500/30 py-4 rounded-xl font-bold shadow-lg"
-                    onmousedown="startHold(event, executeKlaimDana)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
-                    ontouchstart="startHold(event, executeKlaimDana)" ontouchend="cancelHold(event)">
-                <div class="hold-bg" style="background: #10b981;"></div>
-                <span class="hold-text text-emerald-400"><i class="fa-solid fa-paper-plane mr-2"></i> Tahan untuk Ajukan Pencairan</span>
+        <div class="card-primary p-6 text-center mb-6">
+            <h3 class="text-lg font-black mb-2 text-[var(--yellow)]">Total Penagihan Aktif</h3>
+            <h1 id="totalUnclaimed" class="text-4xl font-black mb-6">Rp 0</h1>
+            
+            <div class="bg-black/20 rounded-xl p-4 text-left mb-4">
+                <p class="text-xs font-bold text-[var(--yellow)] mb-2"><i class="fa-solid fa-users"></i> Daftar Pembeli Hari Ini:</p>
+                <ul id="listPembeli" class="text-sm font-bold space-y-1 h-32 overflow-y-auto"></ul>
+            </div>
+
+            <textarea id="chatMitra" class="input-mobile text-sm mb-4" rows="2" placeholder="Tulis pesan ke Kepala Kantor (Opsional)..."></textarea>
+
+            <button id="btnKlaim" class="hold-btn w-full border-2 border-[var(--orange)] py-4 rounded-xl font-bold shadow-lg mb-6"
+                    onmousedown="startHold(event, executeKlaimDana, 'var(--orange)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
+                    ontouchstart="startHold(event, executeKlaimDana, 'var(--orange)')" ontouchend="cancelHold(event)">
+                <div class="hold-bg"></div>
+                <span class="hold-text text-[var(--orange)]"><i class="fa-solid fa-paper-plane mr-2"></i> Tahan untuk Buat Tagihan</span>
             </button>
+
+            <!-- Barcode Mitra (Untuk di-scan Kepala Kantor) -->
+            <div class="bg-white text-[var(--dark)] p-4 rounded-2xl shadow-inner mx-auto border-2 border-white/20">
+                <p class="text-xs font-black mb-2">Tunjukkan QR ini ke Kepala Kantor saat menagih</p>
+                <div id="qrMitraBox" class="flex justify-center mb-2"></div>
+                <p id="qrMitraLabel" class="text-xs font-bold tracking-widest"></p>
+            </div>
         </div>
     </div>
 
     <script src="app.js"></script>
     <script>
         const user = requireLogin();
-        let html5QrcodeScanner;
-        let scannedStaffID = null;
-        let totalBisaDiklaim = 0;
+        let html5QrcodeScanner, scannedStaffID = null, totalBisaDiklaim = 0;
 
         if (user) {
             document.getElementById('mitraName').innerText = user.nama;
+            document.getElementById('qrMitraLabel').innerText = user.id_user;
+            new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 150, height: 150, colorDark: "#000000", colorLight: "#ffffff" });
             loadDataKlaim();
         }
 
@@ -96,11 +104,11 @@
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             if (tabId === 'tab-kasir') {
-                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all";
-                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all";
+                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)]";
+                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400";
             } else {
-                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all";
-                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all";
+                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)]";
+                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400";
                 loadDataKlaim();
             }
         }
@@ -111,18 +119,23 @@
                 totalBisaDiklaim = data.total_unclaimed;
                 document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
                 
-                const btnKlaim = document.getElementById('btnKlaim');
-                if(totalBisaDiklaim === 0) { btnKlaim.style.opacity = "0.5"; btnKlaim.style.pointerEvents = "none"; } 
-                else { btnKlaim.style.opacity = "1"; btnKlaim.style.pointerEvents = "auto"; }
+                const ul = document.getElementById('listPembeli');
+                if(data.rincian.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
+                else ul.innerHTML = data.rincian.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
+
+                const btn = document.getElementById('btnKlaim');
+                if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } 
+                else { btn.style.opacity="1"; btn.style.pointerEvents="auto"; }
             } catch (err) {}
         }
 
         async function executeKlaimDana() {
             if(totalBisaDiklaim === 0) return;
+            const pesan = document.getElementById('chatMitra').value;
             try {
-                await callAPI("klaim_mitra", { id_mitra: user.id_user });
-                Swal.fire({ icon: 'success', title: 'Tagihan Terkirim!', text: `Tagihan sebesar ${formatRp(totalBisaDiklaim)} telah dikirim.`, confirmButtonColor: '#10b981' });
-                loadDataKlaim();
+                await callAPI("klaim_mitra", { id_mitra: user.id_user, catatan: pesan });
+                Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', text: `Silakan tunjukkan QR Anda ke Kepala Kantor untuk pencairan.` });
+                document.getElementById('chatMitra').value = ""; loadDataKlaim();
             } catch (err) {}
         }
 
@@ -132,71 +145,39 @@
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, ()=>{})
             .catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
         }
-        
         function stopScanner() {
             if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
             document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); document.getElementById('btnStopScan').classList.add('hidden');
         }
-
         async function onScanSuccess(decodedText) {
             stopScanner();
             try {
-                const staffData = await callAPI("cek_staff", { qr_id: decodedText });
-                scannedStaffID = staffData.id_user;
-                document.getElementById('namaPelanggan').innerText = staffData.nama;
-                document.getElementById('saldoPelanggan').innerText = formatRp(staffData.saldo);
-                document.getElementById('panelTagihan').classList.remove('hidden');
-                document.getElementById('inputNominal').value = '';
+                const staff = await callAPI("cek_staff", { qr_id: decodedText });
+                scannedStaffID = staff.id_user;
+                document.getElementById('namaPelanggan').innerText = staff.nama; document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
+                document.getElementById('panelTagihan').classList.remove('hidden'); document.getElementById('inputNominal').value = '';
                 new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
-            } catch (error) { Swal.fire("QR Error", "Kode QR tidak dikenali.", "error"); }
+            } catch (error) { Swal.fire("Error", "QR bukan Staff valid.", "error"); }
         }
-
         async function executeTagihan() {
-            const nominal = parseInt(document.getElementById('inputNominal').value);
-            if (!nominal || nominal <= 0) return Swal.fire("Peringatan", "Nominal tidak valid", "warning");
+            const nom = parseInt(document.getElementById('inputNominal').value);
+            if (!nom || nom <= 0) return Swal.fire("Peringatan", "Nominal salah", "warning");
             try {
-                await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nominal });
-                Swal.fire({ icon: 'success', title: 'Sukses!', text: `Transaksi Rp ${nominal.toLocaleString('id-ID')} dicatat.`, confirmButtonColor: '#10b981' });
-                document.getElementById('panelTagihan').classList.add('hidden'); scannedStaffID = null;
+                await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nom });
+                Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden');
                 loadDataKlaim();
             } catch (err) {}
         }
 
-        // =========================================================
-        // BUG FIX: MEMORY-SAFE HOLD ENGINE (ANTI MACET DI HP)
-        // =========================================================
-        let holdTimer;
-        let activeHoldBg = null; // Menyimpan referensi DOM secara global
-
-        function startHold(e, actionCallback) {
-            e.preventDefault(); 
-            // Ambil elemen warna yang sedang di-tap dan simpan ke variabel global
-            activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
-            if(activeHoldBg) {
-                activeHoldBg.style.transition = 'width 1.5s linear'; 
-                activeHoldBg.style.width = '100%';
-            }
-            
-            holdTimer = setTimeout(() => { 
-                // Eksekusi API
-                actionCallback(); 
-                // Kembalikan tombol ke kondisi semula dengan aman
-                if(activeHoldBg) {
-                    activeHoldBg.style.transition = 'width 0.2s ease-out'; 
-                    activeHoldBg.style.width = '0%';
-                    activeHoldBg = null;
-                }
-            }, 1500);
+        let holdTimer, activeHoldBg = null;
+        function startHold(e, actionCallback, color) {
+            e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
+            if(activeHoldBg) { activeHoldBg.style.backgroundColor = color; activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
+            holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500);
         }
-
         function cancelHold(e) {
             clearTimeout(holdTimer); 
-            // Meskipun memori event 'e' terhapus oleh HP, kita masih punya DOM-nya!
-            if(activeHoldBg) {
-                activeHoldBg.style.transition = 'width 0.2s ease-out'; 
-                activeHoldBg.style.width = '0%';
-                activeHoldBg = null;
-            }
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = activeHoldBg.style.backgroundColor; activeHoldBg = null; }
         }
     </script>
 </body>
