@@ -17,7 +17,8 @@
     <div class="flex justify-between items-center mb-4">
         <h1 class="font-black text-xl text-[var(--primary)]">Toko <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
         <div class="flex gap-2">
-            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-rotate-right"></i></button>
+            <!-- TOMBOL REFRESH BARU -->
+            <button onclick="refreshData()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i id="iconRefresh" class="fa-solid fa-rotate-right"></i></button>
             <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
     </div>
@@ -98,7 +99,17 @@
             document.getElementById('mitraName').innerText = user.nama;
             document.getElementById('qrMitraLabel').innerText = user.id_user;
             new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 150, height: 150, colorDark: "#000000", colorLight: "#ffffff" });
-            loadDataKlaim();
+            refreshData(); // Auto sync on load
+        }
+
+        // --- SISTEM SINKRONISASI DATA BARU ---
+        async function refreshData() {
+            const icon = document.getElementById('iconRefresh');
+            icon.classList.add('fa-spin');
+            try {
+                await loadDataKlaim();
+            } catch (err) { console.error(err); }
+            icon.classList.remove('fa-spin');
         }
 
         function switchTab(tabId) {
@@ -110,60 +121,44 @@
             } else {
                 document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)] transition-all";
                 document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all";
-                loadDataKlaim();
+                refreshData();
             }
         }
 
         async function loadDataKlaim() {
-            try {
-                const data = await callAPI("get_mitra_data", { id_mitra: user.id_user });
-                totalBisaDiklaim = data.total_unclaimed;
-                rincianPembeli = data.rincian;
-                noWaAdmin = data.no_wa_admin;
-                
-                document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
-                
-                const ul = document.getElementById('listPembeli');
-                if(rincianPembeli.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
-                else ul.innerHTML = rincianPembeli.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
+            const data = await callAPI("get_mitra_data", { id_mitra: user.id_user });
+            totalBisaDiklaim = data.total_unclaimed;
+            rincianPembeli = data.rincian;
+            noWaAdmin = data.no_wa_admin;
+            
+            document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
+            
+            const ul = document.getElementById('listPembeli');
+            if(rincianPembeli.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
+            else ul.innerHTML = rincianPembeli.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
 
-                const btn = document.getElementById('btnKlaim');
-                if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } 
-                else { btn.style.opacity="1"; btn.style.pointerEvents="auto"; }
-            } catch (err) {}
+            const btn = document.getElementById('btnKlaim');
+            if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } 
+            else { btn.style.opacity="1"; btn.style.pointerEvents="auto"; }
         }
 
-        // ==========================================
-        // AUTO WHATSAPP GENERATOR (NEW FEATURE)
-        // ==========================================
         async function executeKlaimDana() {
             if(totalBisaDiklaim === 0) return;
             const pesan = document.getElementById('chatMitra').value;
             try {
-                // 1. Simpan ke Database
                 await callAPI("klaim_mitra", { id_mitra: user.id_user, catatan: pesan });
                 
-                // 2. Format Pesan WA
                 let listTeks = rincianPembeli.map(r => `- ${r.nama} (${formatRp(r.nominal)})`).join('%0A');
                 let teksWa = `Halo Bapak/Ibu Kepala Kantor,%0A%0AIni tagihan dari *${user.nama}*. Berikut rincian staf yang jajan hari ini:%0A${listTeks}%0A%0A*Total Tagihan: ${formatRp(totalBisaDiklaim)}*%0A%0ACatatan: ${pesan || 'Tidak ada catatan'}.%0A%0AMohon segera divalidasi/dicairkan. Terima kasih!`;
                 
-                // 3. Format Nomor WA (Ubah awalan 0 menjadi 62)
                 let waFormat = noWaAdmin.toString();
                 if (waFormat.startsWith('0')) waFormat = '62' + waFormat.substring(1);
-                
                 let waLink = `https://wa.me/${waFormat}?text=${teksWa}`;
 
-                Swal.fire({ 
-                    icon: 'success', 
-                    title: 'Tagihan Dibuat!', 
-                    text: `Meneruskan ke WhatsApp Kepala Kantor...`,
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    // Buka WhatsApp Otomatis
+                Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', text: `Meneruskan ke WhatsApp Kepala Kantor...`, timer: 2000, showConfirmButton: false }).then(() => {
                     window.open(waLink, '_blank');
                     document.getElementById('chatMitra').value = ""; 
-                    loadDataKlaim();
+                    refreshData();
                 });
             } catch (err) {}
         }
@@ -171,8 +166,7 @@
         function startScanner() {
             document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScan').classList.add('hidden'); document.getElementById('btnStopScan').classList.remove('hidden'); document.getElementById('panelTagihan').classList.add('hidden'); 
             html5QrcodeScanner = new Html5Qrcode("reader");
-            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, ()=>{})
-            .catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
         }
         function stopScanner() {
             if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
@@ -194,7 +188,7 @@
             try {
                 await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nom });
                 Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden');
-                loadDataKlaim();
+                refreshData();
             } catch (err) {}
         }
 
