@@ -4,21 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SuperApp Kantor - Login</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SweetAlert2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- FontAwesome (Icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Panggil CSS Custom Kita -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="flex items-center justify-center p-4">
 
-    <!-- Kontainer Kaca -->
     <div class="glass-card w-full max-w-md p-8 text-center">
-        
-        <!-- Logo / Icon Kantor -->
         <div class="w-20 h-20 mx-auto bg-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 mb-6">
             <i class="fa-solid fa-fingerprint text-4xl text-white"></i>
         </div>
@@ -26,56 +19,35 @@
         <h1 class="text-3xl font-bold mb-2">Login</h1>
         <p class="text-gray-400 mb-8 text-sm">Sistem Operasional Terpadu</p>
 
-        <!-- Form Login -->
         <form id="loginForm" class="space-y-6">
             <div>
-                <input type="text" id="inputID" required autocomplete="off"
-                       class="input-mobile uppercase" 
-                       placeholder="ID USER (Cth: S001)">
+                <input type="text" id="inputID" required autocomplete="off" class="input-mobile uppercase" placeholder="ID USER (Cth: S001)">
             </div>
             <div>
-                <!-- Menggunakan type="tel" agar keyboard HP yang muncul adalah numpad -->
-                <input type="tel" id="inputPIN" required autocomplete="off"
-                       class="input-mobile" 
-                       placeholder="PIN RAHASIA">
+                <input type="tel" id="inputPIN" required autocomplete="off" class="input-mobile" placeholder="PIN RAHASIA">
             </div>
 
-            <button type="submit" 
-                    class="btn-primary w-full py-4 rounded-xl text-lg font-bold uppercase tracking-wider flex justify-center items-center gap-2">
+            <button type="submit" class="btn-primary w-full py-4 rounded-xl text-lg font-bold uppercase tracking-wider flex justify-center items-center gap-2">
                 Masuk Sistem <i class="fa-solid fa-arrow-right"></i>
             </button>
         </form>
     </div>
 
-    <!-- Panggil Logic JS -->
     <script src="app.js"></script>
     <script>
-        // Cek apakah sudah pernah login, jika ya langsung tendang ke dashboard masing-masing
         const existingSession = JSON.parse(localStorage.getItem('userSession'));
-        if (existingSession) {
-            routeUser(existingSession.role);
-        }
+        if (existingSession) routeUser(existingSession.role);
 
-        // Logic ketika tombol Masuk ditekan
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Cegah reload halaman
-            
+            e.preventDefault(); 
             const idUser = document.getElementById('inputID').value.trim().toUpperCase();
             const pin = document.getElementById('inputPIN').value.trim();
-
             if(!idUser || !pin) return;
 
             try {
-                // Tembak API via app.js
-                const userData = await callAPI("login", {
-                    id_user: idUser,
-                    pin: pin
-                });
-
-                // Jika sukses, simpan sesi ke memori browser HP (localStorage)
+                const userData = await callAPI("login", { id_user: idUser, pin: pin });
                 localStorage.setItem('userSession', JSON.stringify(userData));
-
-                // Notifikasi Sukses dengan animasi yang tidak flat
+                
                 Swal.fire({
                     icon: 'success',
                     title: `Selamat Datang, ${userData.nama}!`,
@@ -83,21 +55,24 @@
                     timer: 1500,
                     timerProgressBar: true,
                     backdrop: `rgba(0,0,0,0.8)`
-                }).then(() => {
-                    routeUser(userData.role);
-                });
-
-            } catch (error) {
-                // Error sudah ditangani di app.js
-                console.error("Login gagal", error);
-            }
+                }).then(() => routeUser(userData.role));
+            } catch (error) { console.error("Login gagal", error); }
         });
 
-        // Router Pintar berdasarkan peran
+        // ====================================================
+        // BUG FIX: ROUTER ANTI-SPASI & DETEKSI ERROR OTOMATIS
+        // ====================================================
         function routeUser(role) {
-            if (role === 'STAFF') window.location.href = 'dashboard-staff.html';
-            else if (role === 'MITRA') window.location.href = 'dashboard-mitra.html';
-            else if (role === 'SUPER_ADMIN') window.location.href = 'dashboard-admin.html';
+            // Memaksa format uppercase dan menghapus spasi gaib dari database
+            const cleanRole = role ? role.toString().trim().toUpperCase() : "";
+            
+            if (cleanRole === 'STAFF') window.location.href = 'dashboard-staff.html';
+            else if (cleanRole === 'MITRA') window.location.href = 'dashboard-mitra.html';
+            else if (cleanRole === 'SUPER_ADMIN') window.location.href = 'dashboard-admin.html';
+            else {
+                // Jangan diam jika salah, tampilkan error agar admin tahu typo di Sheets-nya
+                Swal.fire('Error Hak Akses', `Role "${cleanRole}" tidak dikenali sistem. Hubungi IT!`, 'error');
+            }
         }
     </script>
 </body>
