@@ -17,14 +17,14 @@
     <div class="flex justify-between items-center mb-4">
         <h1 class="font-black text-xl text-[var(--primary)]">Toko <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
         <div class="flex gap-2">
-            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md"><i class="fa-solid fa-rotate-right"></i></button>
-            <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md"><i class="fa-solid fa-power-off"></i></button>
+            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
     </div>
 
     <div class="flex gap-2 mb-4 bg-gray-100 p-1 rounded-2xl">
-        <button onclick="switchTab('tab-kasir')" id="btn-tab-kasir" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)]"><i class="fa-solid fa-qrcode mr-1"></i> Kasir</button>
-        <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm text-gray-400"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Penagihan</button>
+        <button onclick="switchTab('tab-kasir')" id="btn-tab-kasir" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)] transition-all"><i class="fa-solid fa-qrcode mr-1"></i> Kasir</button>
+        <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Penagihan</button>
     </div>
 
     <!-- TAB 1: KASIR -->
@@ -32,7 +32,7 @@
         <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
             <h3 class="text-lg font-black mb-4"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Pembeli</h3>
             <div id="reader" class="mb-4 hidden"></div>
-            <button id="btnStartScan" onclick="startScanner()" class="btn-orange w-full py-4 text-lg"><i class="fa-solid fa-qrcode mr-2"></i> BUKA KAMERA</button>
+            <button id="btnStartScan" onclick="startScanner()" class="btn-orange w-full py-4 text-lg rounded-xl shadow-lg"><i class="fa-solid fa-qrcode mr-2"></i> BUKA KAMERA</button>
             <button id="btnStopScan" onclick="stopScanner()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold hidden">Tutup Kamera</button>
         </div>
 
@@ -65,7 +65,7 @@
             
             <div class="bg-black/20 rounded-xl p-4 text-left mb-4">
                 <p class="text-xs font-bold text-[var(--yellow)] mb-2"><i class="fa-solid fa-users"></i> Daftar Pembeli Hari Ini:</p>
-                <ul id="listPembeli" class="text-sm font-bold space-y-1 h-32 overflow-y-auto"></ul>
+                <ul id="listPembeli" class="text-sm font-bold space-y-1 h-32 overflow-y-auto pr-2"></ul>
             </div>
 
             <textarea id="chatMitra" class="input-mobile text-sm mb-4" rows="2" placeholder="Tulis pesan ke Kepala Kantor (Opsional)..."></textarea>
@@ -74,10 +74,9 @@
                     onmousedown="startHold(event, executeKlaimDana, 'var(--orange)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
                     ontouchstart="startHold(event, executeKlaimDana, 'var(--orange)')" ontouchend="cancelHold(event)">
                 <div class="hold-bg"></div>
-                <span class="hold-text text-[var(--orange)]"><i class="fa-solid fa-paper-plane mr-2"></i> Tahan untuk Buat Tagihan</span>
+                <span class="hold-text text-[var(--orange)]"><i class="fa-brands fa-whatsapp mr-2"></i> Buat Tagihan & Kirim WA</span>
             </button>
 
-            <!-- Barcode Mitra (Untuk di-scan Kepala Kantor) -->
             <div class="bg-white text-[var(--dark)] p-4 rounded-2xl shadow-inner mx-auto border-2 border-white/20">
                 <p class="text-xs font-black mb-2">Tunjukkan QR ini ke Kepala Kantor saat menagih</p>
                 <div id="qrMitraBox" class="flex justify-center mb-2"></div>
@@ -89,7 +88,11 @@
     <script src="app.js"></script>
     <script>
         const user = requireLogin();
+        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
+        
         let html5QrcodeScanner, scannedStaffID = null, totalBisaDiklaim = 0;
+        let rincianPembeli = [];
+        let noWaAdmin = "";
 
         if (user) {
             document.getElementById('mitraName').innerText = user.nama;
@@ -98,17 +101,15 @@
             loadDataKlaim();
         }
 
-        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
-
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             if (tabId === 'tab-kasir') {
-                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)]";
-                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400";
+                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)] transition-all";
+                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all";
             } else {
-                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)]";
-                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400";
+                document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)] transition-all";
+                document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all";
                 loadDataKlaim();
             }
         }
@@ -117,11 +118,14 @@
             try {
                 const data = await callAPI("get_mitra_data", { id_mitra: user.id_user });
                 totalBisaDiklaim = data.total_unclaimed;
+                rincianPembeli = data.rincian;
+                noWaAdmin = data.no_wa_admin;
+                
                 document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
                 
                 const ul = document.getElementById('listPembeli');
-                if(data.rincian.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
-                else ul.innerHTML = data.rincian.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
+                if(rincianPembeli.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
+                else ul.innerHTML = rincianPembeli.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
 
                 const btn = document.getElementById('btnKlaim');
                 if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } 
@@ -129,13 +133,38 @@
             } catch (err) {}
         }
 
+        // ==========================================
+        // AUTO WHATSAPP GENERATOR (NEW FEATURE)
+        // ==========================================
         async function executeKlaimDana() {
             if(totalBisaDiklaim === 0) return;
             const pesan = document.getElementById('chatMitra').value;
             try {
+                // 1. Simpan ke Database
                 await callAPI("klaim_mitra", { id_mitra: user.id_user, catatan: pesan });
-                Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', text: `Silakan tunjukkan QR Anda ke Kepala Kantor untuk pencairan.` });
-                document.getElementById('chatMitra').value = ""; loadDataKlaim();
+                
+                // 2. Format Pesan WA
+                let listTeks = rincianPembeli.map(r => `- ${r.nama} (${formatRp(r.nominal)})`).join('%0A');
+                let teksWa = `Halo Bapak/Ibu Kepala Kantor,%0A%0AIni tagihan dari *${user.nama}*. Berikut rincian staf yang jajan hari ini:%0A${listTeks}%0A%0A*Total Tagihan: ${formatRp(totalBisaDiklaim)}*%0A%0ACatatan: ${pesan || 'Tidak ada catatan'}.%0A%0AMohon segera divalidasi/dicairkan. Terima kasih!`;
+                
+                // 3. Format Nomor WA (Ubah awalan 0 menjadi 62)
+                let waFormat = noWaAdmin.toString();
+                if (waFormat.startsWith('0')) waFormat = '62' + waFormat.substring(1);
+                
+                let waLink = `https://wa.me/${waFormat}?text=${teksWa}`;
+
+                Swal.fire({ 
+                    icon: 'success', 
+                    title: 'Tagihan Dibuat!', 
+                    text: `Meneruskan ke WhatsApp Kepala Kantor...`,
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    // Buka WhatsApp Otomatis
+                    window.open(waLink, '_blank');
+                    document.getElementById('chatMitra').value = ""; 
+                    loadDataKlaim();
+                });
             } catch (err) {}
         }
 
