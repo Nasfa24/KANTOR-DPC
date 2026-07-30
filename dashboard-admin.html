@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Komando Admin - SuperApp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .hold-btn { position: relative; overflow: hidden; user-select: none; touch-action: manipulation; }
+        .hold-bg { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #10b981; z-index: 0; }
+        .hold-text { position: relative; z-index: 1; pointer-events: none; }
+        /* Animasi Tab */
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="p-4 pb-20">
+
+    <!-- Header & Saldo Kas Utama -->
+    <div class="glass-card p-6 mb-6 text-center relative overflow-hidden">
+        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+            <i class="fa-solid fa-power-off text-xl"></i>
+        </button>
+        <p class="text-gray-300 text-xs uppercase tracking-widest mb-1"><i class="fa-solid fa-shield-halved mr-1 text-blue-400"></i> Otoritas Kepala Kantor</p>
+        <h2 id="adminName" class="text-xl font-bold mb-4 text-white">Loading...</h2>
+        
+        <div class="bg-gradient-to-r from-blue-900 to-blue-800 rounded-2xl p-6 border border-blue-400/30 shadow-lg shadow-blue-500/20">
+            <p class="text-blue-200 text-sm mb-1">Total Saldo Kas Kantor</p>
+            <h1 id="saldoKas" class="text-4xl font-extrabold tracking-tight text-white">Rp 0</h1>
+        </div>
+    </div>
+
+    <!-- Navigasi Tab -->
+    <div class="flex gap-2 mb-6">
+        <button onclick="switchTab('tab-tagihan')" id="btn-tab-tagihan" class="flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all">
+            <i class="fa-solid fa-file-invoice mr-1"></i> Tagihan Mitra
+        </button>
+        <button onclick="switchTab('tab-staf')" id="btn-tab-staf" class="flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all">
+            <i class="fa-solid fa-users mr-1"></i> Pantau Staf
+        </button>
+    </div>
+
+    <!-- TAB 1: TAGIHAN MITRA (REKONSILIASI KAS) -->
+    <div id="tab-tagihan" class="tab-content active">
+        <div class="glass-card p-6">
+            <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-bell text-orange-400 mr-2"></i> Menunggu Pembayaran</h3>
+            <div id="listTagihan" class="space-y-4">
+                <!-- Data Tagihan Akan Dimuat di Sini oleh JS -->
+                <p class="text-center text-sm text-gray-400 italic py-4">Memuat data tagihan...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: PANTAU STAF & WA REMINDER -->
+    <div id="tab-staf" class="tab-content">
+        <div class="glass-card p-6">
+            <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-chart-pie text-purple-400 mr-2"></i> Sisa Kuota Makan Staf</h3>
+            <div id="listStaf" class="space-y-3">
+                <!-- Data Staf Akan Dimuat di Sini -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const user = requireLogin();
+        if (user) {
+            document.getElementById('adminName').innerText = user.nama;
+            loadAdminData(); // Tarik data saat halaman dibuka
+        }
+
+        const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+
+        // ==========================================
+        // FETCH DATA ADMIN (KAS, TAGIHAN, STAF)
+        // ==========================================
+        async function loadAdminData() {
+            try {
+                const data = await callAPI("get_admin_data");
+                
+                // 1. Render Kas
+                document.getElementById('saldoKas').innerText = formatRp(data.kas);
+
+                // 2. Render Tagihan Pending
+                const listTagihan = document.getElementById('listTagihan');
+                if (data.klaim.length === 0) {
+                    listTagihan.innerHTML = `<div class="text-center p-6 bg-white/5 rounded-xl border border-white/10"><i class="fa-solid fa-check-circle text-3xl text-emerald-500 mb-2"></i><p class="text-sm text-gray-300">Semua tagihan bersih. Tidak ada antrean.</p></div>`;
+                } else {
+                    listTagihan.innerHTML = data.klaim.map(k => `
+                        <div class="bg-gray-800 rounded-xl p-4 border border-orange-500/30">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <p class="text-xs text-gray-400">ID Mitra: ${k.id_mitra}</p>
+                                    <h4 class="font-bold text-white text-lg">${k.id_klaim}</h4>
+                                </div>
+                                <span class="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-md font-bold">Pending</span>
+                            </div>
+                            <h2 class="text-2xl font-black text-orange-400 mb-3">${formatRp(k.nominal)}</h2>
+                            <button class="hold-btn w-full bg-gray-900 border border-emerald-500/30 py-3 rounded-lg font-bold text-sm"
+                                    onmousedown="startHold(event, () => eksekusiBayarKlaim('${k.id_klaim}', ${k.nominal}))" 
+                                    onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
+                                    ontouchstart="startHold(event, () => eksekusiBayarKlaim('${k.id_klaim}', ${k.nominal}))" 
+                                    ontouchend="cancelHold(event)">
+                                <div class="hold-bg"></div>
+                                <span class="hold-text text-emerald-400"><i class="fa-solid fa-check-double mr-1"></i> Tahan untuk Bayar via Kas</span>
+                            </button>
+                        </div>
+                    `).join('');
+                }
+
+                // 3. Render Staf & WA Button
+                const listStaf = document.getElementById('listStaf');
+                listStaf.innerHTML = data.staf.map(s => {
+                    // Logika warna: Merah jika habis, Kuning jika < 50rb, Hijau jika aman
+                    let warna = s.saldo === 0 ? 'text-red-400' : (s.saldo < 50000 ? 'text-yellow-400' : 'text-emerald-400');
+                    let waPesan = `Halo ${s.nama}, info dari Kepala Kantor: Kuota makan UMKM kamu sisa *${formatRp(s.saldo)}*. Jangan lupa digunakan ya!`;
+                    let waLink = `https://wa.me/${s.no_wa}?text=${encodeURIComponent(waPesan)}`;
+                    
+                    return `
+                        <div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/10">
+                            <div>
+                                <p class="font-bold text-white">${s.nama}</p>
+                                <p class="text-sm font-black ${warna}">${formatRp(s.saldo)}</p>
+                            </div>
+                            <a href="${waLink}" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 h-10 w-10 rounded-full flex justify-center items-center text-white shadow-lg shadow-emerald-600/30">
+                                <i class="fa-brands fa-whatsapp text-xl"></i>
+                            </a>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error("Gagal memuat data admin", error);
+            }
+        }
+
+        // ==========================================
+        // EKSEKUSI PEMBAYARAN KLAIM (POTONG KAS)
+        // ==========================================
+        async function eksekusiBayarKlaim(idKlaim, nominal) {
+            try {
+                await callAPI("admin_bayar_klaim", {
+                    id_klaim: idKlaim,
+                    id_admin: user.id_user
+                });
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Buku Kas Diperbarui!',
+                    text: `Pembayaran ${formatRp(nominal)} berhasil dicatat di Buku Kas. Menunggu konfirmasi penerimaan dari Mitra.`,
+                    confirmButtonColor: '#10b981'
+                }).then(() => {
+                    loadAdminData(); // Refresh UI otomatis
+                });
+            } catch (error) {
+                // Error saldo kas tidak cukup ditangani otomatis
+            }
+        }
+
+        // ==========================================
+        // UI INTERACTION (TABS & HOLD BUTTON)
+        // ==========================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            // Ubah warna tombol tab
+            const btnTagihan = document.getElementById('btn-tab-tagihan');
+            const btnStaf = document.getElementById('btn-tab-staf');
+            
+            if (tabId === 'tab-tagihan') {
+                btnTagihan.className = "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all";
+                btnStaf.className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all";
+            } else {
+                btnStaf.className = "flex-1 py-3 rounded-xl font-bold text-sm bg-blue-600 text-white transition-all";
+                btnTagihan.className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white/10 text-gray-400 transition-all";
+            }
+        }
+
+        let holdTimer;
+        function startHold(e, actionCallback) {
+            e.preventDefault(); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 1.5s linear'; bg.style.width = '100%';
+            holdTimer = setTimeout(() => { cancelHold(e); actionCallback(); }, 1500);
+        }
+        function cancelHold(e) {
+            clearTimeout(holdTimer); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 0.2s ease-out'; bg.style.width = '0%';
+        }
+    </script>
+</body>
+</html>
