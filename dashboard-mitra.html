@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kasir Mitra - SuperApp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Library Kamera QR Scanner -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .hold-btn { position: relative; overflow: hidden; user-select: none; touch-action: manipulation; }
+        .hold-bg { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #f97316; z-index: 0; }
+        .hold-text { position: relative; z-index: 1; pointer-events: none; }
+        /* Styling untuk area kamera */
+        #reader { width: 100%; border-radius: 16px; overflow: hidden; border: 2px solid rgba(255,255,255,0.2) !important; }
+        #reader__scan_region { background: #000; }
+    </style>
+</head>
+<body class="p-4 pb-20">
+
+    <div class="glass-card p-6 mb-6 text-center relative overflow-hidden">
+        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+            <i class="fa-solid fa-power-off text-xl"></i>
+        </button>
+        <p class="text-gray-300 text-sm mb-1">POS System Mitra,</p>
+        <h2 id="mitraName" class="text-2xl font-bold mb-2 text-orange-400">Loading...</h2>
+    </div>
+
+    <!-- Scanner Kamera -->
+    <div class="glass-card p-6 mb-6 text-center">
+        <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-camera text-blue-400 mr-2"></i> Scan QR Pelanggan</h3>
+        
+        <!-- Wadah Kamera -->
+        <div id="reader" class="mb-4 hidden"></div>
+
+        <button id="btnStartScan" onclick="startScanner()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold shadow-lg">
+            <i class="fa-solid fa-qrcode mr-2"></i> Buka Kamera Scanner
+        </button>
+        <button id="btnStopScan" onclick="stopScanner()" class="w-full bg-red-600 hover:bg-red-500 py-3 rounded-xl font-bold shadow-lg hidden">
+            Tutup Kamera
+        </button>
+    </div>
+
+    <!-- Panel Input Tagihan (Tersembunyi sampai QR berhasil di-scan) -->
+    <div id="panelTagihan" class="glass-card p-6 hidden">
+        <div class="bg-blue-900/50 p-4 rounded-xl border border-blue-500/30 mb-4 text-center">
+            <p class="text-xs text-gray-400">Pelanggan Terdeteksi:</p>
+            <h2 id="namaPelanggan" class="text-xl font-bold text-white mb-1">Nama</h2>
+            <p class="text-sm">Saldo Maksimal: <span id="saldoPelanggan" class="font-bold text-emerald-400">Rp 0</span></p>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1 text-center">Masukkan Nominal Transaksi (Rp)</label>
+                <input type="tel" id="inputNominal" class="input-mobile !text-orange-400 !font-bold !text-2xl" placeholder="0" autocomplete="off">
+            </div>
+
+            <button id="btnTagih" 
+                    class="hold-btn w-full bg-gray-800 border border-orange-500/30 py-4 rounded-xl font-bold shadow-lg mt-4"
+                    onmousedown="startHold(event, executeTagihan)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
+                    ontouchstart="startHold(event, executeTagihan)" ontouchend="cancelHold(event)">
+                <div class="hold-bg"></div>
+                <span class="hold-text text-orange-400"><i class="fa-solid fa-file-invoice-dollar mr-2"></i> Tahan untuk Tagih</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const user = requireLogin();
+        let html5QrcodeScanner;
+        let scannedStaffID = null;
+
+        if (user) {
+            document.getElementById('mitraName').innerText = user.nama;
+        }
+
+        // ==========================================
+        // ENGINE SCANNER KAMERA
+        // ==========================================
+        function startScanner() {
+            document.getElementById('reader').classList.remove('hidden');
+            document.getElementById('btnStartScan').classList.add('hidden');
+            document.getElementById('btnStopScan').classList.remove('hidden');
+            document.getElementById('panelTagihan').classList.add('hidden'); // Sembunyikan panel jika ada sisa sblmnya
+
+            // Gunakan kamera belakang (environment)
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess,
+                onScanFailure
+            ).catch((err) => {
+                Swal.fire("Kamera Gagal", "Pastikan Anda memberikan izin akses kamera ke browser.", "error");
+                stopScanner();
+            });
+        }
+
+        function stopScanner() {
+            if(html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    html5QrcodeScanner.clear();
+                });
+            }
+            document.getElementById('reader').classList.add('hidden');
+            document.getElementById('btnStartScan').classList.remove('hidden');
+            document.getElementById('btnStopScan').classList.add('hidden');
+        }
+
+        async function onScanSuccess(decodedText, decodedResult) {
+            // Jika sukses baca QR, langsung matikan kamera sementara
+            stopScanner();
+            
+            // Panggil API untuk cek data Staff
+            try {
+                const staffData = await callAPI("cek_staff", { qr_id: decodedText });
+                
+                // Tampilkan Panel Tagihan
+                scannedStaffID = staffData.id_user;
+                document.getElementById('namaPelanggan').innerText = staffData.nama;
+                document.getElementById('saldoPelanggan').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(staffData.saldo);
+                document.getElementById('panelTagihan').classList.remove('hidden');
+                document.getElementById('inputNominal').value = '';
+                document.getElementById('inputNominal').focus();
+                
+                // Bunyikan suara Beep sukses (Opsional)
+                const audio = new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3');
+                audio.play().catch(e => {});
+
+            } catch (error) {
+                // Error dari API (Bukan staf / QR salah)
+                Swal.fire("QR Tidak Valid", "Kode QR tidak dikenali sebagai Staf terdaftar.", "error");
+            }
+        }
+
+        function onScanFailure(error) {
+            // Berjalan tiap frame jika QR belum ketemu. Biarkan kosong agar tidak spam log.
+        }
+
+        // ==========================================
+        // PROSES PENAGIHAN (DARI MITRA KE STAFF)
+        // ==========================================
+        async function executeTagihan() {
+            const nominal = parseInt(document.getElementById('inputNominal').value);
+            
+            if (!nominal || nominal <= 0) return Swal.fire("Peringatan", "Masukkan nominal yang valid", "warning");
+
+            try {
+                // Kita gunakan API bayar_umkm yang sama, hanya saja yang memicu sekarang adalah Mitra
+                const res = await callAPI("bayar_umkm", {
+                    id_staff: scannedStaffID,
+                    id_mitra: user.id_user,
+                    nominal: nominal
+                });
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pembayaran Sukses!',
+                    text: `Transaksi Rp ${nominal.toLocaleString('id-ID')} dengan ${document.getElementById('namaPelanggan').innerText} berhasil dicatat.`,
+                    backdrop: `rgba(16, 185, 129, 0.4)`,
+                    confirmButtonColor: '#10b981'
+                });
+
+                // Reset layar kasir
+                document.getElementById('panelTagihan').classList.add('hidden');
+                scannedStaffID = null;
+
+            } catch (err) {
+                // Error ditangani app.js (misal: Saldo kurang)
+            }
+        }
+
+        // --- Engine Hold to Confirm (Sama seperti sebelumnya) ---
+        let holdTimer;
+        function startHold(e, actionCallback) {
+            e.preventDefault(); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 1.5s linear'; bg.style.width = '100%';
+            holdTimer = setTimeout(() => { cancelHold(e); actionCallback(); }, 1500);
+        }
+        function cancelHold(e) {
+            clearTimeout(holdTimer); const bg = e.currentTarget.querySelector('.hold-bg'); bg.style.transition = 'width 0.2s ease-out'; bg.style.width = '0%';
+        }
+    </script>
+</body>
+</html>
