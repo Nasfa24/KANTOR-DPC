@@ -3,59 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dasbor Staf - SuperApp</title>
+    <title>Staf - SuperApp</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .radar-box { position: relative; width: 80px; height: 80px; margin: 0 auto; display: none; }
-        .radar-box.active { display: block; }
-        .radar-core { width: 20px; height: 20px; background: #3b82f6; border-radius: 50%; position: absolute; top: 30px; left: 30px; z-index: 10; box-shadow: 0 0 10px #3b82f6; }
-        .radar-ripple { width: 100%; height: 100%; border: 2px solid #3b82f6; border-radius: 50%; position: absolute; top: 0; left: 0; animation: ripple 1.5s infinite ease-out; }
-        @keyframes ripple { 0% { transform: scale(0.2); opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
-        .hold-btn { position: relative; overflow: hidden; user-select: none; touch-action: manipulation; }
-        .hold-bg { position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: #10b981; z-index: 0; }
-        .hold-text { position: relative; z-index: 1; pointer-events: none; }
-    </style>
 </head>
 <body class="p-4 pb-20">
 
-    <div class="glass-card p-6 mb-6 text-center relative overflow-hidden">
-        <button onclick="logout()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i class="fa-solid fa-power-off text-xl"></i></button>
-        <p class="text-gray-300 text-sm mb-1">Selamat bekerja,</p>
-        <h2 id="staffName" class="text-2xl font-bold mb-4 text-blue-400">Loading...</h2>
-        <div class="bg-white/10 rounded-2xl p-4 border border-white/20">
-            <p class="text-gray-300 text-xs uppercase tracking-widest mb-1">Sisa Kuota Makan</p>
-            <h1 id="saldoStaff" class="text-4xl font-extrabold tracking-tight">Rp 0</h1>
+    <!-- Navbar Global -->
+    <div class="flex justify-between items-center mb-4">
+        <h1 class="font-black text-xl text-[var(--primary)]">Hi, <span id="staffName">Staf</span></h1>
+        <div class="flex gap-2">
+            <button onclick="window.location.reload()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
     </div>
 
-    <div class="glass-card p-6 mb-6 text-center">
-        <h3 class="text-lg font-bold mb-4 text-orange-400"><i class="fa-solid fa-qrcode mr-2"></i> QR Jajan UMKM</h3>
-        <p class="text-xs text-gray-300 mb-4">Tunjukkan kode ini kepada Mitra UMKM untuk di-scan saat Anda melakukan pembayaran.</p>
-        <div class="bg-white p-4 rounded-2xl inline-block shadow-lg mx-auto mb-2">
+    <!-- Info Saldo -->
+    <div class="card-primary p-6 mb-6 text-center">
+        <p class="text-[var(--yellow)] text-sm font-bold tracking-widest mb-1">SISA KUOTA MAKAN</p>
+        <h1 id="saldoStaff" class="text-4xl font-black mb-2">Rp 0</h1>
+    </div>
+
+    <!-- Modul QR Jajan -->
+    <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
+        <h3 class="text-lg font-black mb-2 text-[var(--primary)]"><i class="fa-solid fa-qrcode text-[var(--orange)] mr-2"></i> QR Jajan UMKM</h3>
+        <p class="text-xs text-gray-500 font-bold mb-4">Tunjukkan kode ini ke Mitra untuk bayar.</p>
+        <div class="bg-white p-2 rounded-2xl inline-block shadow-inner mx-auto mb-2 border border-gray-200">
             <div id="qrcodeBox"></div>
         </div>
-        <p id="qrIDLabel" class="text-sm font-mono text-gray-400 tracking-widest mt-2"></p>
-        <button onclick="window.location.reload()" class="mt-4 text-xs text-blue-400 underline"><i class="fa-solid fa-rotate mr-1"></i> Refresh Saldo</button>
+        <p id="qrIDLabel" class="text-sm font-black text-gray-400 tracking-widest mt-2"></p>
     </div>
 
-    <div class="glass-card p-6">
-        <h3 class="text-lg font-bold mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-location-dot text-blue-400 mr-2"></i> Presensi Kehadiran</h3>
+    <!-- Modul GPS -->
+    <div class="card-primary p-6">
+        <h3 class="text-lg font-black mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-location-dot text-[var(--orange)] mr-2"></i> Presensi Kehadiran</h3>
         <div id="radarContainer" class="radar-box mb-4">
             <div class="radar-ripple"></div>
             <div class="radar-core"></div>
         </div>
-        <p id="gpsStatus" class="text-center text-sm text-gray-400 mb-4">Pindai lokasi Anda untuk absen.</p>
-        <button id="btnScanGPS" onclick="scanLocation()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold shadow-lg mb-2"><i class="fa-solid fa-satellite-dish mr-2"></i> Pindai Lokasi GPS</button>
+        <p id="gpsStatus" class="text-center text-sm font-bold text-[var(--yellow)] mb-4">Pindai lokasi Anda untuk absen.</p>
+        
+        <button id="btnScanGPS" onclick="scanLocation()" class="btn-orange w-full py-4 text-lg shadow-lg mb-2"><i class="fa-solid fa-satellite-dish mr-2"></i> PINDAI LOKASI</button>
+        
         <button id="btnAbsen" style="display: none;" 
-                class="hold-btn w-full bg-gray-800 border border-emerald-500/30 py-4 rounded-xl font-bold shadow-lg"
+                class="hold-btn w-full bg-gray-900 border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
                 onmousedown="startHold(event, executeAbsen)" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
                 ontouchstart="startHold(event, executeAbsen)" ontouchend="cancelHold(event)">
-            <div class="hold-bg"></div>
-            <span class="hold-text text-emerald-400"><i class="fa-solid fa-fingerprint mr-2"></i> Tahan untuk Absen</span>
+            <div class="hold-bg" style="background-color: var(--yellow);"></div>
+            <span class="hold-text text-white"><i class="fa-solid fa-fingerprint mr-2"></i> Tahan untuk Absen</span>
         </button>
     </div>
 
@@ -65,22 +63,20 @@
         let userLat = null, userLon = null;
 
         if (user) {
-            document.getElementById('staffName').innerText = user.nama;
+            document.getElementById('staffName').innerText = user.nama.split(" ")[0];
             document.getElementById('saldoStaff').innerText = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(user.saldo);
             document.getElementById('qrIDLabel').innerText = user.id_user;
-            new QRCode(document.getElementById("qrcodeBox"), {
-                text: user.id_user, width: 180, height: 180, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
-            });
+            new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 200, height: 200, colorDark: "#000000", colorLight: "#ffffff" });
         }
 
         function scanLocation() {
             const status = document.getElementById('gpsStatus'), radar = document.getElementById('radarContainer'), btnScan = document.getElementById('btnScanGPS'), btnAbsen = document.getElementById('btnAbsen');
             if (!navigator.geolocation) return Swal.fire("Error", "GPS tidak didukung", "error");
-            radar.classList.add('active'); status.innerHTML = "<span class='text-blue-400'>Mencari satelit...</span>"; btnScan.style.display = 'none';
+            radar.classList.add('active'); status.innerText = "Mencari satelit..."; btnScan.style.display = 'none';
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     userLat = pos.coords.latitude; userLon = pos.coords.longitude;
-                    radar.classList.remove('active'); status.innerHTML = `<span class='text-emerald-400'><i class='fa-solid fa-check-circle'></i> Lokasi terkunci.</span>`; btnAbsen.style.display = 'block';
+                    radar.classList.remove('active'); status.innerHTML = `<i class='fa-solid fa-check-circle'></i> Lokasi terkunci.`; btnAbsen.style.display = 'block';
                 },
                 (err) => { radar.classList.remove('active'); btnScan.style.display = 'block'; Swal.fire("GPS Gagal", "Gagal/ditolak.", "error"); status.innerText = "Gagal memindai."; },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -89,33 +85,23 @@
 
         async function executeAbsen() {
             try {
-                const res = await callAPI("absen_masuk", { id_user: user.id_user, lat: userLat, lon: userLon });
-                Swal.fire({ icon: 'success', title: 'Absen Diterima!', text: `Jarak: ${res.jarak}m.`, confirmButtonColor: '#10b981' });
+                await callAPI("absen_masuk", { id_user: user.id_user, lat: userLat, lon: userLon });
+                Swal.fire({ icon: 'success', title: 'Absen Diterima!'});
                 document.getElementById('btnAbsen').style.display = 'none'; document.getElementById('gpsStatus').innerText = "Sudah absen hari ini.";
-            } catch (err) {
-                document.getElementById('btnAbsen').style.display = 'none'; document.getElementById('btnScanGPS').style.display = 'block'; document.getElementById('gpsStatus').innerText = "Gagal. Pindai ulang.";
-            }
+            } catch (err) { document.getElementById('btnAbsen').style.display = 'none'; document.getElementById('btnScanGPS').style.display = 'block'; }
         }
 
-        // =========================================================
-        // MEMORY-SAFE HOLD ENGINE
-        // =========================================================
-        let holdTimer;
-        let activeHoldBg = null;
-
+        let holdTimer, activeHoldBg = null;
         function startHold(e, actionCallback) {
-            e.preventDefault(); 
-            activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; }
-            holdTimer = setTimeout(() => { 
-                actionCallback(); 
-                if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg = null; }
-            }, 1500);
+            e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; 
+                               e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
+            holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500);
         }
-
         function cancelHold(e) {
             clearTimeout(holdTimer); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg = null; }
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; 
+                               activeHoldBg.nextElementSibling.style.color = '#fff'; activeHoldBg = null; }
         }
     </script>
 </body>
