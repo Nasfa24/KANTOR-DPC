@@ -1,0 +1,67 @@
+/* style.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    /* Latar belakang gradient dinamis, tidak membosankan */
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    color: white;
+    min-height: 100vh;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent; /* Hilangkan blok biru saat tombol di-tap di HP */
+}
+
+/* Efek Kaca Tembus Pandang (Glassmorphism) */
+.glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    border-radius: 24px;
+}
+
+/* Modifikasi SweetAlert2 agar cocok dengan tema aplikasi */
+.swal2-popup {
+    background: rgba(30, 41, 59, 0.95) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 20px !important;
+    color: white !important;
+}
+.swal2-title {
+    color: #f8fafc !important;
+}
+.swal2-timer-progress-bar {
+    background: #3b82f6 !important; /* Warna biru profesional */
+}
+
+/* Styling Input khusus Mobile (Besar & Jelas) */
+.input-mobile {
+    width: 100%;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    font-size: 1.25rem;
+    padding: 1rem;
+    border-radius: 16px;
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+.input-mobile:focus {
+    border-color: #3b82f6;
+    background: rgba(255,255,255,0.15);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+/* Tombol Hold to Confirm Base Styling */
+.btn-primary {
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    transition: transform 0.1s ease;
+}
+.btn-primary:active {
+    transform: scale(0.96); /* Efek tombol ditekan masuk ke dalam */
+}
