@@ -17,12 +17,12 @@
     <div class="flex justify-between items-center mb-4">
         <h1 class="font-black text-xl text-[var(--primary)]">Ka. Kantor</h1>
         <div class="flex gap-2">
-            <!-- TOMBOL REFRESH BARU -->
             <button onclick="refreshData()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i id="iconRefresh" class="fa-solid fa-rotate-right"></i></button>
             <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
     </div>
 
+    <!-- UI: Info Dual Saldo & Tombol Buku Kas -->
     <div class="card-primary p-5 mb-6 text-center shadow-lg">
         <div class="flex justify-between items-center mb-3 border-b border-white/20 pb-3">
             <div class="text-left w-1/2 pr-2">
@@ -34,7 +34,12 @@
                 <h1 id="saldoPribadi" class="text-xl font-black text-gray-200 truncate">Rp 0</h1>
             </div>
         </div>
-        <p class="text-[10px] text-white opacity-80 uppercase tracking-widest">Pusat Komando Finansial</p>
+        
+        <!-- TOMBOL KAS MANUAL -->
+        <div class="flex gap-2 mt-2">
+            <button onclick="bukaFormKas('IN')" class="flex-1 bg-[var(--yellow)] text-black py-2 rounded-xl font-bold text-xs shadow hover:scale-95 transition"><i class="fa-solid fa-plus-circle mr-1"></i> Uang Masuk</button>
+            <button onclick="bukaFormKas('OUT')" class="flex-1 bg-red-500 text-white py-2 rounded-xl font-bold text-xs shadow hover:scale-95 transition"><i class="fa-solid fa-minus-circle mr-1"></i> Uang Keluar</button>
+        </div>
     </div>
 
     <div class="flex gap-1 mb-6 bg-gray-100 p-1 rounded-2xl overflow-x-auto">
@@ -43,6 +48,7 @@
         <button onclick="switchTab('tab-pantau')" id="btn-tab-pantau" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px] transition-all"><i class="fa-solid fa-users"></i> Monitor Staf</button>
     </div>
 
+    <!-- TAB 1: OPERASIONAL PRIBADI -->
     <div id="tab-operasional" class="tab-content active">
         <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
             <h3 class="text-lg font-black mb-2 text-[var(--primary)]"><i class="fa-solid fa-qrcode text-[var(--orange)] mr-2"></i> QR Jajan Anda</h3>
@@ -66,6 +72,7 @@
         </div>
     </div>
 
+    <!-- TAB 2: BAYAR TAGIHAN MITRA -->
     <div id="tab-bayar" class="tab-content">
         <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
             <h3 class="text-lg font-black mb-4 text-[var(--primary)]"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Penagihan Mitra</h3>
@@ -93,6 +100,7 @@
         </div>
     </div>
 
+    <!-- TAB 3: MONITOR STAF -->
     <div id="tab-pantau" class="tab-content">
         <div class="card-primary p-6">
             <h3 class="text-lg font-black mb-4 border-b border-white/20 pb-2"><i class="fa-solid fa-users text-[var(--yellow)] mr-2"></i> Kuota & WhatsApp Staf</h3>
@@ -109,21 +117,17 @@
         if (user) {
             document.getElementById('qrIDLabel').innerText = user.id_user;
             new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 150, height: 150 });
-            refreshData(); // Auto sync on load
+            refreshData(); 
         }
 
-        // --- SISTEM SINKRONISASI DATA BARU ---
         async function refreshData() {
             const icon = document.getElementById('iconRefresh');
             icon.classList.add('fa-spin');
             try {
-                // Sync Saldo Pribadi
                 const freshUser = await callAPI("sync_user", { id_user: user.id_user });
                 localStorage.setItem('userSession', JSON.stringify(freshUser));
                 user.saldo = freshUser.saldo;
                 document.getElementById('saldoPribadi').innerText = formatRp(user.saldo);
-                
-                // Sync Data Dasbor Admin (Kas & List Staf)
                 await loadAdminData();
             } catch (err) { console.error("Gagal sinkronisasi", err); }
             icon.classList.remove('fa-spin');
@@ -152,6 +156,60 @@
             }).join('');
         }
 
+        // ==========================================
+        // FUNGSI BARU: INPUT KAS MANUAL POPUP
+        // ==========================================
+        async function bukaFormKas(tipe) {
+            const isMasuk = tipe === 'IN';
+            const categories = isMasuk ? 
+                `<option value="Modal">Modal / Top Up</option><option value="Lain-lain">Pemasukan Lain</option>` : 
+                `<option value="Operasional">Operasional</option><option value="Listrik/Air">Listrik & Air</option><option value="ATK">ATK</option><option value="Lain-lain">Lain-lain</option>`;
+
+            const { value: formValues } = await Swal.fire({
+                title: isMasuk ? 'Input Uang Masuk' : 'Input Pengeluaran',
+                html: `
+                    <div class="text-left space-y-3 mt-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Kategori</label>
+                            <select id="swal-kategori" class="w-full p-3 border-2 border-gray-200 rounded-xl mt-1 outline-none font-bold">${categories}</select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Nominal (Rp)</label>
+                            <input type="number" id="swal-nominal" class="w-full p-3 border-2 border-gray-200 rounded-xl mt-1 outline-none font-black text-xl" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Keterangan Tambahan</label>
+                            <input type="text" id="swal-keterangan" class="w-full p-3 border-2 border-gray-200 rounded-xl mt-1 outline-none font-bold" placeholder="Contoh: Beli Kertas HVS">
+                        </div>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Simpan Transaksi',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: 'var(--primary)',
+                preConfirm: () => {
+                    const kategori = document.getElementById('swal-kategori').value;
+                    const nominal = document.getElementById('swal-nominal').value;
+                    const keterangan = document.getElementById('swal-keterangan').value;
+                    if (!nominal || nominal <= 0) { Swal.showValidationMessage('Nominal harus lebih dari 0'); }
+                    return { kategori, nominal, keterangan }
+                }
+            });
+
+            if (formValues) {
+                try {
+                    await callAPI("kas_manual", {
+                        id_admin: user.id_user, tipe: tipe, kategori: formValues.kategori,
+                        nominal: parseInt(formValues.nominal), keterangan: formValues.keterangan
+                    });
+                    Swal.fire({icon: 'success', title: 'Berhasil!', text: 'Buku Kas diperbarui.', timer: 1500, showConfirmButton: false});
+                    refreshData(); // Auto update nominal di layar
+                } catch (error) {}
+            }
+        }
+
+        // --- SCANNER ADMIN UNTUK BAYAR MITRA ---
         function startScannerMitra() {
             document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScanMitra').classList.add('hidden'); document.getElementById('btnStopScanMitra').classList.remove('hidden'); document.getElementById('panelBayarMitra').classList.add('hidden'); 
             html5QrcodeScanner = new Html5Qrcode("reader");
@@ -179,10 +237,11 @@
                 await callAPI("admin_bayar_klaim", { id_klaim: scannedKlaimID, id_admin: user.id_user });
                 Swal.fire({ icon: 'success', title: 'Kas Dipotong!', text: `Pembayaran berhasil.`, confirmButtonColor: '#03754c' });
                 document.getElementById('panelBayarMitra').classList.add('hidden');
-                refreshData(); // Sync seluruh UI setelah bayar
+                refreshData(); 
             } catch (error) {}
         }
 
+        // --- GPS ADMIN (SEBAGAI STAF) ---
         let userLat = null, userLon = null;
         function scanLocation() {
             if (!navigator.geolocation) return Swal.fire("Error", "GPS tidak didukung", "error");
