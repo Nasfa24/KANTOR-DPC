@@ -1,6 +1,6 @@
 {
   "name": "SuperApp Kantor",
-  "short_name": "SuperApp",
+  "short_name": "Kantor DPC",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
