@@ -4,16 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SuperApp - Login</title>
+    <!-- PWA META TAGS (Wajib untuk Install di HP) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#03754c">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3256/3256114.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="flex items-center justify-center p-4">
+<body class="flex items-center justify-center p-4 bg-gray-50 min-h-screen">
 
-    <div class="card-primary w-full max-w-md p-8 text-center border-4 border-[var(--primary)]" style="background-color: var(--light); color: var(--dark);">
-        
-        <div class="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6" style="background-color: var(--primary);">
+    <div class="card-primary w-full max-w-md p-8 text-center border-4 border-[var(--primary)] shadow-2xl" style="background-color: var(--light); color: var(--dark);">
+        <div class="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner" style="background-color: var(--primary);">
             <i class="fa-solid fa-fingerprint text-4xl" style="color: var(--yellow);"></i>
         </div>
 
@@ -21,16 +27,9 @@
         <p class="text-gray-500 mb-8 font-bold text-sm">Sistem Operasional Kantor</p>
 
         <form id="loginForm" class="space-y-6">
-            <div>
-                <input type="text" id="inputID" required autocomplete="off" class="input-light uppercase text-center text-xl" placeholder="ID USER">
-            </div>
-            <div>
-                <input type="tel" id="inputPIN" required autocomplete="off" class="input-light text-center text-xl" placeholder="PIN RAHASIA">
-            </div>
-
-            <button type="submit" class="btn-orange w-full py-4 rounded-xl text-lg flex justify-center items-center gap-2 transition active:scale-95">
-                VERIFIKASI MASUK <i class="fa-solid fa-arrow-right"></i>
-            </button>
+            <div><input type="text" id="inputID" required autocomplete="off" class="input-light uppercase text-center text-xl" placeholder="ID USER"></div>
+            <div><input type="tel" id="inputPIN" required autocomplete="off" class="input-light text-center text-xl" placeholder="PIN RAHASIA"></div>
+            <button type="submit" class="btn-orange w-full py-4 rounded-xl text-lg flex justify-center items-center gap-2 transition active:scale-95 shadow-lg">VERIFIKASI MASUK <i class="fa-solid fa-arrow-right"></i></button>
         </form>
     </div>
 
