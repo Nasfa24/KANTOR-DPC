@@ -248,12 +248,39 @@
             if (formValues) { try { await callAPI("kas_manual", { id_admin: user.id_user, tipe: tipe, kategori: formValues.kategori, nominal: parseInt(formValues.nominal), keterangan: formValues.keterangan }); Swal.fire({icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false}); silentSync(); } catch (error) {} }
         }
 
-        function startScannerMitra() { document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScanMitra').classList.add('hidden'); document.getElementById('btnStopScanMitra').classList.remove('hidden'); document.getElementById('panelBayarMitra').classList.add('hidden'); isProcessingQR = false; html5QrcodeScanner = new Html5Qrcode("reader"); const boxSize = Math.min(250, window.innerWidth - 80); html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: boxSize, height: boxSize }, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] }, onScanSuccessMitra, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScannerMitra(); }); }
-        function stopScannerMitra() { if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear()); document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScanMitra').classList.remove('hidden'); document.getElementById('btnStopScanMitra').classList.add('hidden'); }
-        async function onScanSuccessMitra(decodedMitraID) { if(isProcessingQR) return; isProcessingQR = true; stopScannerMitra(); try { const tagihan = await callAPI("cek_tagihan_mitra", { id_mitra: decodedMitraID }); scannedKlaimID = tagihan.id_klaim; document.getElementById('idKlaimTxt').innerText = tagihan.id_klaim; document.getElementById('idMitraTxt').innerText = decodedMitraID; document.getElementById('totalBayarTxt').innerText = formatRp(tagihan.nominal); document.getElementById('chatMitraTxt').innerText = tagihan.catatan; document.getElementById('listRincianTagihan').innerHTML = tagihan.rincian.map(r => `<li class="flex justify-between border-b border-gray-200 pb-1"><span>${r.nama}</span> <span class="text-[var(--primary)]">${formatRp(r.nominal)}</span></li>`).join(''); document.getElementById('panelBayarMitra').classList.remove('hidden'); new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{}); } catch (error) { Swal.fire("Penolakan Sistem", error.message || "QR Ditolak.", "error"); isProcessingQR=false;} }
+        // =======================================================
+        // BUG FIX: ASYNC-AWAIT SCANNER STOP
+        // =======================================================
+        function startScannerMitra() { 
+            document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScanMitra').classList.add('hidden'); document.getElementById('btnStopScanMitra').classList.remove('hidden'); document.getElementById('panelBayarMitra').classList.add('hidden'); 
+            isProcessingQR = false; html5QrcodeScanner = new Html5Qrcode("reader"); 
+            const boxSize = Math.min(250, window.innerWidth - 80);
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: boxSize, height: boxSize } }, onScanSuccessMitra, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScannerMitra(); }); 
+        }
+
+        async function stopScannerMitra() { 
+            if(html5QrcodeScanner) {
+                try { await html5QrcodeScanner.stop(); html5QrcodeScanner.clear(); } catch(e) {}
+                html5QrcodeScanner = null;
+            }
+            document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScanMitra').classList.remove('hidden'); document.getElementById('btnStopScanMitra').classList.add('hidden'); 
+        }
+        
+        async function onScanSuccessMitra(decodedMitraID) { 
+            if(isProcessingQR) return; isProcessingQR = true; 
+            new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
+            
+            await stopScannerMitra(); 
+            
+            try { 
+                const tagihan = await callAPI("cek_tagihan_mitra", { id_mitra: decodedMitraID }); 
+                scannedKlaimID = tagihan.id_klaim; 
+                document.getElementById('idKlaimTxt').innerText = tagihan.id_klaim; document.getElementById('idMitraTxt').innerText = decodedMitraID; document.getElementById('totalBayarTxt').innerText = formatRp(tagihan.nominal); document.getElementById('chatMitraTxt').innerText = tagihan.catatan; document.getElementById('listRincianTagihan').innerHTML = tagihan.rincian.map(r => `<li class="flex justify-between border-b border-gray-200 pb-1"><span>${r.nama}</span> <span class="text-[var(--primary)]">${formatRp(r.nominal)}</span></li>`).join(''); document.getElementById('panelBayarMitra').classList.remove('hidden'); 
+            } catch (error) { isProcessingQR=false; } 
+        }
+
         async function executeBayarKlaim() { try { await callAPI("admin_bayar_klaim", { id_klaim: scannedKlaimID, id_admin: user.id_user }); Swal.fire({ icon: 'success', title: 'Kas Dipotong!', text: `Pembayaran berhasil.`, confirmButtonColor: '#03754c' }); document.getElementById('panelBayarMitra').classList.add('hidden'); silentSync(); } catch (error) {} }
 
-        // ABSEN ADMIN
         function toggleTugasLuar() { if(document.getElementById('inputLokasi').value === "LUAR") document.getElementById('panelTugasLuar').classList.remove('hidden'); else { document.getElementById('panelTugasLuar').classList.add('hidden'); document.getElementById('inputKeterangan').value = ""; } }
         function startVerification() {
             const lokasi = document.getElementById('inputLokasi').value, ket = document.getElementById('inputKeterangan').value;
