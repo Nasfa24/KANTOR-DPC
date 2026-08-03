@@ -22,7 +22,7 @@
 <body class="p-4 pb-20">
 
     <div class="flex justify-between items-center mb-4">
-        <h1 class="font-black text-xl text-[var(--primary)]">Mitra <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
+        <h1 class="font-black text-xl text-[var(--primary)]">Toko <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
         <div class="flex gap-2">
             <div id="syncIndicator" class="w-3 h-3 rounded-full bg-green-500 my-auto shadow-[0_0_8px_#22c55e] opacity-0 transition-opacity"></div>
             <button onclick="refreshData()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i id="iconRefresh" class="fa-solid fa-rotate-right"></i></button>
@@ -40,7 +40,7 @@
             <h3 class="text-lg font-black mb-4"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Pembeli</h3>
             <div id="reader" class="mb-4 hidden"></div>
             <button id="btnStartScan" onclick="startScanner()" class="btn-orange w-full py-4 text-lg rounded-xl shadow-lg"><i class="fa-solid fa-qrcode mr-2"></i> BUKA KAMERA</button>
-            <button id="btnStopScan" onclick="stopScanner()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold hidden">Tutup Kamera</button>
+            <button id="btnStopScan" onclick="stopScannerForce()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold hidden">Tutup Kamera</button>
         </div>
         <div id="panelTagihan" class="card-primary p-6 hidden">
             <div class="bg-black/20 p-4 rounded-xl mb-4 text-center">
@@ -86,7 +86,6 @@
             document.getElementById('qrMitraLabel').innerText = user.id_user;
             new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
             refreshData(); 
-            // AUTO REFRESH PER 2 MENIT (120000 ms)
             setInterval(silentSync, 120000); 
         }
 
@@ -123,33 +122,56 @@
             } catch (err) {}
         }
 
+        // ========================================================
+        // REVOLUSI SCANNER (ANTI-DEADLOCK)
+        // ========================================================
         function startScanner() {
             document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScan').classList.add('hidden'); document.getElementById('btnStopScan').classList.remove('hidden'); document.getElementById('panelTagihan').classList.add('hidden'); 
             isProcessingQR = false; html5QrcodeScanner = new Html5Qrcode("reader");
             const boxSize = Math.min(250, window.innerWidth - 80); 
-            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: boxSize, height: boxSize }, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] }, onScanSuccess, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: boxSize, height: boxSize }, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] }, onScanSuccess, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScannerForce(); });
         }
 
-        async function stopScanner() {
-            if(html5QrcodeScanner) { try { await html5QrcodeScanner.stop(); html5QrcodeScanner.clear(); } catch(e) {} html5QrcodeScanner = null; }
+        function stopScannerForce() {
+            if(html5QrcodeScanner) { try { html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear()); } catch(e) {} html5QrcodeScanner = null; }
             document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); document.getElementById('btnStopScan').classList.add('hidden');
         }
 
         async function onScanSuccess(decodedText) {
-            if(isProcessingQR) return; isProcessingQR = true; new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
-            await stopScanner();
+            if(isProcessingQR) return; 
+            isProcessingQR = true; 
+            new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
+            
+            // BEKUKAN DAN SEMBUNYIKAN KAMERA SECEPAT KILAT (Tanpa Await)
+            if(html5QrcodeScanner) html5QrcodeScanner.pause(true); 
+            document.getElementById('reader').classList.add('hidden');
+            document.getElementById('btnStartScan').classList.add('hidden');
+            document.getElementById('btnStopScan').classList.add('hidden');
+
             try {
                 const staff = await callAPI("cek_staff", { qr_id: decodedText });
+                
+                // Matikan hardware kamera diam-diam di latar belakang
+                setTimeout(() => stopScannerForce(), 100); 
+
                 scannedStaffID = staff.id_user;
-                document.getElementById('namaPelanggan').innerText = staff.nama; document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
-                document.getElementById('panelTagihan').classList.remove('hidden'); document.getElementById('inputNominal').value = '';
-            } catch (error) { isProcessingQR = false; }
+                document.getElementById('namaPelanggan').innerText = staff.nama; 
+                document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
+                document.getElementById('panelTagihan').classList.remove('hidden'); 
+                document.getElementById('inputNominal').value = '';
+            } catch (error) { 
+                // Jika error (Spasi/Salah ID), bangunkan lagi kameranya
+                isProcessingQR = false; 
+                document.getElementById('reader').classList.remove('hidden');
+                document.getElementById('btnStopScan').classList.remove('hidden');
+                if(html5QrcodeScanner) html5QrcodeScanner.resume(); 
+            }
         }
 
         async function executeTagihan() {
             const nom = parseInt(document.getElementById('inputNominal').value);
             if (!nom || nom <= 0) return Swal.fire("Peringatan", "Nominal salah", "warning");
-            try { await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nom }); Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden'); silentSync(); } catch (err) {}
+            try { await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nom }); Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); silentSync(); } catch (err) {}
         }
 
         let holdTimer, activeHoldBg = null;
