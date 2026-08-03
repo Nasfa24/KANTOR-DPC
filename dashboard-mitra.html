@@ -15,9 +15,9 @@
 <body class="p-4 pb-20">
 
     <div class="flex justify-between items-center mb-4">
-        <h1 class="font-black text-xl text-[var(--primary)]">MITRA <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
+        <h1 class="font-black text-xl text-[var(--primary)]">Toko <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
         <div class="flex gap-2">
-            <!-- TOMBOL REFRESH BARU -->
+            <div id="syncIndicator" class="w-3 h-3 rounded-full bg-green-500 my-auto shadow-[0_0_8px_#22c55e] opacity-0 transition-opacity"></div>
             <button onclick="refreshData()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i id="iconRefresh" class="fa-solid fa-rotate-right"></i></button>
             <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
@@ -28,7 +28,6 @@
         <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Penagihan</button>
     </div>
 
-    <!-- TAB 1: KASIR -->
     <div id="tab-kasir" class="tab-content active">
         <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
             <h3 class="text-lg font-black mb-4"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Pembeli</h3>
@@ -58,7 +57,6 @@
         </div>
     </div>
 
-    <!-- TAB 2: PENAGIHAN & CHAT -->
     <div id="tab-klaim" class="tab-content">
         <div class="card-primary p-6 text-center mb-6">
             <h3 class="text-lg font-black mb-2 text-[var(--yellow)]">Total Penagihan Aktif</h3>
@@ -91,25 +89,27 @@
         const user = requireLogin();
         const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
         
-        let html5QrcodeScanner, scannedStaffID = null, totalBisaDiklaim = 0;
-        let rincianPembeli = [];
-        let noWaAdmin = "";
+        let html5QrcodeScanner, scannedStaffID = null, totalBisaDiklaim = 0, isProcessingQR = false;
+        let rincianPembeli = [], noWaAdmin = "";
 
         if (user) {
             document.getElementById('mitraName').innerText = user.nama;
             document.getElementById('qrMitraLabel').innerText = user.id_user;
-            new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 150, height: 150, colorDark: "#000000", colorLight: "#ffffff" });
-            refreshData(); // Auto sync on load
+            new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff" });
+            refreshData(); 
+            setInterval(silentSync, 30000); // Silent Sync tiap 30 detik
         }
 
-        // --- SISTEM SINKRONISASI DATA BARU ---
+        async function silentSync() {
+            document.getElementById('syncIndicator').style.opacity = '1';
+            try { await loadDataKlaim(); } catch (err) {}
+            setTimeout(() => document.getElementById('syncIndicator').style.opacity = '0', 1500);
+        }
+
         async function refreshData() {
-            const icon = document.getElementById('iconRefresh');
-            icon.classList.add('fa-spin');
-            try {
-                await loadDataKlaim();
-            } catch (err) { console.error(err); }
-            icon.classList.remove('fa-spin');
+            document.getElementById('iconRefresh').classList.add('fa-spin');
+            await silentSync();
+            document.getElementById('iconRefresh').classList.remove('fa-spin');
         }
 
         function switchTab(tabId) {
@@ -121,7 +121,7 @@
             } else {
                 document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)] transition-all";
                 document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all";
-                refreshData();
+                silentSync();
             }
         }
 
@@ -132,7 +132,6 @@
             noWaAdmin = data.no_wa_admin;
             
             document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
-            
             const ul = document.getElementById('listPembeli');
             if(rincianPembeli.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
             else ul.innerHTML = rincianPembeli.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
@@ -147,32 +146,38 @@
             const pesan = document.getElementById('chatMitra').value;
             try {
                 await callAPI("klaim_mitra", { id_mitra: user.id_user, catatan: pesan });
-                
                 let listTeks = rincianPembeli.map(r => `- ${r.nama} (${formatRp(r.nominal)})`).join('%0A');
-                let teksWa = `Halo Bapak/Ibu Kepala Kantor,%0A%0AIni tagihan dari *${user.nama}*. Berikut rincian staf yang jajan hari ini:%0A${listTeks}%0A%0A*Total Tagihan: ${formatRp(totalBisaDiklaim)}*%0A%0ACatatan: ${pesan || 'Tidak ada catatan'}.%0A%0AMohon segera divalidasi/dicairkan. Terima kasih!`;
+                let teksWa = `Halo Bapak/Ibu Kepala Kantor,%0A%0AIni tagihan dari *${user.nama}*. Berikut rincian staf yang jajan hari ini:%0A${listTeks}%0A%0A*Total Tagihan: ${formatRp(totalBisaDiklaim)}*%0A%0ACatatan: ${pesan || 'Tidak ada catatan'}.%0A%0AMohon divalidasi/dicairkan. Terima kasih!`;
                 
                 let waFormat = noWaAdmin.toString();
                 if (waFormat.startsWith('0')) waFormat = '62' + waFormat.substring(1);
-                let waLink = `https://wa.me/${waFormat}?text=${teksWa}`;
 
                 Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', text: `Meneruskan ke WhatsApp Kepala Kantor...`, timer: 2000, showConfirmButton: false }).then(() => {
-                    window.open(waLink, '_blank');
-                    document.getElementById('chatMitra').value = ""; 
-                    refreshData();
+                    window.open(`https://wa.me/${waFormat}?text=${teksWa}`, '_blank');
+                    document.getElementById('chatMitra').value = ""; silentSync();
                 });
             } catch (err) {}
         }
 
         function startScanner() {
             document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScan').classList.add('hidden'); document.getElementById('btnStopScan').classList.remove('hidden'); document.getElementById('panelTagihan').classList.add('hidden'); 
+            isProcessingQR = false;
             html5QrcodeScanner = new Html5Qrcode("reader");
-            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
+            
+            // Perbaikan Scanner Responsive
+            const boxSize = Math.min(250, window.innerWidth - 80); 
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, 
+                { fps: 15, qrbox: { width: boxSize, height: boxSize } }, 
+                onScanSuccess, ()=>{}
+            ).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
         }
         function stopScanner() {
             if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
             document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); document.getElementById('btnStopScan').classList.add('hidden');
         }
         async function onScanSuccess(decodedText) {
+            if(isProcessingQR) return; isProcessingQR = true;
             stopScanner();
             try {
                 const staff = await callAPI("cek_staff", { qr_id: decodedText });
@@ -180,7 +185,7 @@
                 document.getElementById('namaPelanggan').innerText = staff.nama; document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
                 document.getElementById('panelTagihan').classList.remove('hidden'); document.getElementById('inputNominal').value = '';
                 new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
-            } catch (error) { Swal.fire("Error", "QR bukan Staff valid.", "error"); }
+            } catch (error) { Swal.fire("Error", "QR bukan Staff valid.", "error"); isProcessingQR = false; }
         }
         async function executeTagihan() {
             const nom = parseInt(document.getElementById('inputNominal').value);
@@ -188,20 +193,13 @@
             try {
                 await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nom });
                 Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden');
-                refreshData();
+                silentSync();
             } catch (err) {}
         }
 
         let holdTimer, activeHoldBg = null;
-        function startHold(e, actionCallback, color) {
-            e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
-            if(activeHoldBg) { activeHoldBg.style.backgroundColor = color; activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
-            holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500);
-        }
-        function cancelHold(e) {
-            clearTimeout(holdTimer); 
-            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = activeHoldBg.style.backgroundColor; activeHoldBg = null; }
-        }
+        function startHold(e, actionCallback, color) { e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); if(activeHoldBg) { activeHoldBg.style.backgroundColor = color; activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; } holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500); }
+        function cancelHold(e) { clearTimeout(holdTimer); if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = activeHoldBg.style.backgroundColor; activeHoldBg = null; } }
     </script>
 </body>
 </html>
