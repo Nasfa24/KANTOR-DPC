@@ -1,42 +1,55 @@
 // app.js
 
-// Kunci ini URL yang Anda berikan tadi
-const API_URL = "https://script.google.com/macros/s/AKfycbyk_xYhuL4uj7mLx9L0Rtg9AI68Ifw9yCf35cXDAdB6by-18R4Mcq3vxydfUgJy4RnTNA/exec";
+// KUNCI INI HARUS BERISI URL DEPLOYMENT "WEB APP" YANG PALING BARU (Berakhiran /exec)
+const API_URL = "https://script.google.com/macros/s/AKfycbyk_xYhuL4uj7mLx9L0Rtg9AI68Ifw9yCf35cXDAdB6by-18R4Mcq3vxydfUgJy4RnTNA/exec"; 
 const API_KEY = "SuperAppKantor2026!"; // Harus sama persis dengan di GAS
 
-// Fungsi Universal untuk menembak API (Dengan indikator Loading SweetAlert)
+// Fungsi Universal untuk menembak API Lapis Baja (Bulletproof Fetch)
 async function callAPI(action, payload = {}) {
-    // Gabungkan payload khusus dengan konfigurasi sistem
     const data = {
         api_key: API_KEY,
         action: action,
         ...payload
     };
 
-    // Munculkan Loading Animasi
     Swal.fire({
         title: 'Memproses...',
-        text: 'Mohon tunggu sebentar',
+        text: 'Menyinkronkan data dengan server',
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
+        didOpen: () => { Swal.showLoading(); }
     });
 
     try {
         const response = await fetch(API_URL, {
             method: "POST",
-            body: JSON.stringify(data)
+            // STANDAR MUTLAK: text/plain agar Google tidak memblokir (Bypass CORS Preflight)
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8", 
+            },
+            body: JSON.stringify(data),
+            // STANDAR MUTLAK: Mengikuti sistem Redirect 302 milik Google
+            redirect: "follow" 
         });
-        const result = await response.json();
+
+        // Tangkap respon sebagai teks dulu (Jangan langsung di-parse ke JSON)
+        const textResponse = await response.text();
         
-        // Tutup loading
+        let result;
+        try {
+            // Mencoba mengubah teks menjadi JSON
+            result = JSON.parse(textResponse);
+        } catch (e) {
+            // JIKA GAGAL (Artinya Google mengirim HTML "Unexpected token <"):
+            console.error("SERVER GOOGLE MENOLAK:", textResponse);
+            throw new Error("Koneksi diblokir oleh Server Google. Pastikan Akses API (Deployment) diatur ke 'Anyone/Siapa Saja'.");
+        }
+        
         Swal.close();
 
         if (result.status === "success") {
-            return result.data; // Kembalikan data murni
+            return result.data; 
         } else {
             throw new Error(result.message);
         }
@@ -44,11 +57,12 @@ async function callAPI(action, payload = {}) {
         Swal.close();
         Swal.fire({
             icon: 'error',
-            title: 'Terjadi Kesalahan',
+            title: 'Koneksi Gagal',
             text: error.message,
-            confirmButtonColor: '#ef4444'
+            confirmButtonColor: '#ef4444',
+            customClass: { popup: 'rounded-3xl' }
         });
-        throw error; // Lempar error agar bisa ditangkap oleh fungsi pemanggil
+        throw error; 
     }
 }
 
@@ -68,6 +82,7 @@ function logout() {
     localStorage.removeItem('userSession');
     window.location.href = 'index.html';
 }
+
 // ==========================================
 // ENGINE INSTALASI APLIKASI (PWA)
 // ==========================================
