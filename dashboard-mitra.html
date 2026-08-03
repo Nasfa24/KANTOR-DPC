@@ -17,7 +17,7 @@
     <div class="flex justify-between items-center mb-4">
         <h1 class="font-black text-xl text-[var(--primary)]">Toko <span id="mitraName" class="text-[var(--orange)]">...</span></h1>
         <div class="flex gap-2">
-            <div id="syncIndicator" class="w-3 h-3 rounded-full bg-green-500 my-auto shadow-[0_0_8px_#22c55e] opacity-0 transition-opacity"></div>
+            <!-- TOMBOL REFRESH BARU -->
             <button onclick="refreshData()" class="w-10 h-10 rounded-full bg-[var(--yellow)] text-[var(--dark)] font-bold shadow-md active:scale-90 transition"><i id="iconRefresh" class="fa-solid fa-rotate-right"></i></button>
             <button onclick="logout()" class="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold shadow-md active:scale-90 transition"><i class="fa-solid fa-power-off"></i></button>
         </div>
@@ -58,22 +58,26 @@
         </div>
     </div>
 
-    <!-- TAB 2: PENAGIHAN -->
+    <!-- TAB 2: PENAGIHAN & CHAT -->
     <div id="tab-klaim" class="tab-content">
         <div class="card-primary p-6 text-center mb-6">
             <h3 class="text-lg font-black mb-2 text-[var(--yellow)]">Total Penagihan Aktif</h3>
             <h1 id="totalUnclaimed" class="text-4xl font-black mb-6">Rp 0</h1>
+            
             <div class="bg-black/20 rounded-xl p-4 text-left mb-4">
                 <p class="text-xs font-bold text-[var(--yellow)] mb-2"><i class="fa-solid fa-users"></i> Daftar Pembeli Hari Ini:</p>
                 <ul id="listPembeli" class="text-sm font-bold space-y-1 h-32 overflow-y-auto pr-2"></ul>
             </div>
+
             <textarea id="chatMitra" class="input-mobile text-sm mb-4" rows="2" placeholder="Tulis pesan ke Kepala Kantor (Opsional)..."></textarea>
+
             <button id="btnKlaim" class="hold-btn w-full border-2 border-[var(--orange)] py-4 rounded-xl font-bold shadow-lg mb-6"
                     onmousedown="startHold(event, executeKlaimDana, 'var(--orange)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
                     ontouchstart="startHold(event, executeKlaimDana, 'var(--orange)')" ontouchend="cancelHold(event)">
                 <div class="hold-bg"></div>
                 <span class="hold-text text-[var(--orange)]"><i class="fa-brands fa-whatsapp mr-2"></i> Buat Tagihan & Kirim WA</span>
             </button>
+
             <div class="bg-white text-[var(--dark)] p-4 rounded-2xl shadow-inner mx-auto border-2 border-white/20">
                 <p class="text-xs font-black mb-2">Tunjukkan QR ini ke Kepala Kantor saat menagih</p>
                 <div id="qrMitraBox" class="flex justify-center mb-2"></div>
@@ -87,27 +91,25 @@
         const user = requireLogin();
         const formatRp = (angka) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(angka);
         
-        let html5QrcodeScanner, scannedStaffID = null, totalBisaDiklaim = 0, isProcessingQR = false;
-        let rincianPembeli = [], noWaAdmin = "";
+        let html5QrcodeScanner, scannedStaffID = null, totalBisaDiklaim = 0;
+        let rincianPembeli = [];
+        let noWaAdmin = "";
 
         if (user) {
             document.getElementById('mitraName').innerText = user.nama;
             document.getElementById('qrMitraLabel').innerText = user.id_user;
-            new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
-            refreshData(); 
-            setInterval(silentSync, 30000); 
+            new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 150, height: 150, colorDark: "#000000", colorLight: "#ffffff" });
+            refreshData(); // Auto sync on load
         }
 
-        async function silentSync() {
-            document.getElementById('syncIndicator').style.opacity = '1';
-            try { await loadDataKlaim(); } catch (err) {}
-            setTimeout(() => document.getElementById('syncIndicator').style.opacity = '0', 1500);
-        }
-
+        // --- SISTEM SINKRONISASI DATA BARU ---
         async function refreshData() {
-            document.getElementById('iconRefresh').classList.add('fa-spin');
-            await silentSync();
-            document.getElementById('iconRefresh').classList.remove('fa-spin');
+            const icon = document.getElementById('iconRefresh');
+            icon.classList.add('fa-spin');
+            try {
+                await loadDataKlaim();
+            } catch (err) { console.error(err); }
+            icon.classList.remove('fa-spin');
         }
 
         function switchTab(tabId) {
@@ -119,19 +121,25 @@
             } else {
                 document.getElementById('btn-tab-klaim').className = "flex-1 py-3 rounded-xl font-bold text-sm bg-white shadow text-[var(--primary)] transition-all";
                 document.getElementById('btn-tab-kasir').className = "flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all";
-                silentSync();
+                refreshData();
             }
         }
 
         async function loadDataKlaim() {
             const data = await callAPI("get_mitra_data", { id_mitra: user.id_user });
-            totalBisaDiklaim = data.total_unclaimed; rincianPembeli = data.rincian; noWaAdmin = data.no_wa_admin;
+            totalBisaDiklaim = data.total_unclaimed;
+            rincianPembeli = data.rincian;
+            noWaAdmin = data.no_wa_admin;
+            
             document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
+            
             const ul = document.getElementById('listPembeli');
             if(rincianPembeli.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
             else ul.innerHTML = rincianPembeli.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
+
             const btn = document.getElementById('btnKlaim');
-            if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } else { btn.style.opacity="1"; btn.style.pointerEvents="auto"; }
+            if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } 
+            else { btn.style.opacity="1"; btn.style.pointerEvents="auto"; }
         }
 
         async function executeKlaimDana() {
@@ -139,70 +147,61 @@
             const pesan = document.getElementById('chatMitra').value;
             try {
                 await callAPI("klaim_mitra", { id_mitra: user.id_user, catatan: pesan });
+                
                 let listTeks = rincianPembeli.map(r => `- ${r.nama} (${formatRp(r.nominal)})`).join('%0A');
-                let teksWa = `Halo Kepala Kantor,%0AIni tagihan dari *${user.nama}*:%0A${listTeks}%0A*Total: ${formatRp(totalBisaDiklaim)}*%0ACatatan: ${pesan || '-'}`;
-                let waFormat = noWaAdmin.toString(); if (waFormat.startsWith('0')) waFormat = '62' + waFormat.substring(1);
-                Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', timer: 2000, showConfirmButton: false }).then(() => {
-                    window.open(`https://wa.me/${waFormat}?text=${teksWa}`, '_blank');
-                    document.getElementById('chatMitra').value = ""; silentSync();
+                let teksWa = `Halo Bapak/Ibu Kepala Kantor,%0A%0AIni tagihan dari *${user.nama}*. Berikut rincian staf yang jajan hari ini:%0A${listTeks}%0A%0A*Total Tagihan: ${formatRp(totalBisaDiklaim)}*%0A%0ACatatan: ${pesan || 'Tidak ada catatan'}.%0A%0AMohon segera divalidasi/dicairkan. Terima kasih!`;
+                
+                let waFormat = noWaAdmin.toString();
+                if (waFormat.startsWith('0')) waFormat = '62' + waFormat.substring(1);
+                let waLink = `https://wa.me/${waFormat}?text=${teksWa}`;
+
+                Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', text: `Meneruskan ke WhatsApp Kepala Kantor...`, timer: 2000, showConfirmButton: false }).then(() => {
+                    window.open(waLink, '_blank');
+                    document.getElementById('chatMitra').value = ""; 
+                    refreshData();
                 });
             } catch (err) {}
         }
 
-        // =======================================================
-        // BUG FIX: ASYNC-AWAIT SCANNER STOP (MENCEGAH CRASH UI)
-        // =======================================================
         function startScanner() {
             document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScan').classList.add('hidden'); document.getElementById('btnStopScan').classList.remove('hidden'); document.getElementById('panelTagihan').classList.add('hidden'); 
-            isProcessingQR = false;
             html5QrcodeScanner = new Html5Qrcode("reader");
-            const boxSize = Math.min(250, window.innerWidth - 80); 
-            
-            // Format QR_CODE eksklusif dilepas agar kompatibel dengan seluruh versi browser HP
-            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: boxSize, height: boxSize } }, onScanSuccess, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
         }
-
-        async function stopScanner() {
-            if(html5QrcodeScanner) {
-                try { await html5QrcodeScanner.stop(); html5QrcodeScanner.clear(); } catch(e) {}
-                html5QrcodeScanner = null;
-            }
+        function stopScanner() {
+            if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
             document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); document.getElementById('btnStopScan').classList.add('hidden');
         }
-
         async function onScanSuccess(decodedText) {
-            if(isProcessingQR) return; 
-            isProcessingQR = true; 
-            new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
-            
-            // Tunggu kamera benar-benar mati sebelum menarik data dari API
-            await stopScanner();
-            
+            stopScanner();
             try {
                 const staff = await callAPI("cek_staff", { qr_id: decodedText });
                 scannedStaffID = staff.id_user;
-                document.getElementById('namaPelanggan').innerText = staff.nama; 
-                document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
-                document.getElementById('panelTagihan').classList.remove('hidden'); 
-                document.getElementById('inputNominal').value = '';
-            } catch (error) { 
-                isProcessingQR = false; 
-                // Error "User tidak ditemukan" akan dimunculkan oleh app.js secara otomatis
-            }
+                document.getElementById('namaPelanggan').innerText = staff.nama; document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
+                document.getElementById('panelTagihan').classList.remove('hidden'); document.getElementById('inputNominal').value = '';
+                new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
+            } catch (error) { Swal.fire("Error", "QR bukan Staff valid.", "error"); }
         }
-
         async function executeTagihan() {
             const nom = parseInt(document.getElementById('inputNominal').value);
             if (!nom || nom <= 0) return Swal.fire("Peringatan", "Nominal salah", "warning");
             try {
                 await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nom });
-                Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden'); silentSync();
+                Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden');
+                refreshData();
             } catch (err) {}
         }
 
         let holdTimer, activeHoldBg = null;
-        function startHold(e, actionCallback, color) { e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); if(activeHoldBg) { activeHoldBg.style.backgroundColor = color; activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; } holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500); }
-        function cancelHold(e) { clearTimeout(holdTimer); if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = activeHoldBg.style.backgroundColor; activeHoldBg = null; } }
+        function startHold(e, actionCallback, color) {
+            e.preventDefault(); activeHoldBg = e.currentTarget.querySelector('.hold-bg'); 
+            if(activeHoldBg) { activeHoldBg.style.backgroundColor = color; activeHoldBg.style.transition = 'width 1.5s linear'; activeHoldBg.style.width = '100%'; e.currentTarget.querySelector('.hold-text').style.color = '#000'; }
+            holdTimer = setTimeout(() => { actionCallback(); cancelHold(e); }, 1500);
+        }
+        function cancelHold(e) {
+            clearTimeout(holdTimer); 
+            if(activeHoldBg) { activeHoldBg.style.transition = 'width 0.2s ease-out'; activeHoldBg.style.width = '0%'; activeHoldBg.nextElementSibling.style.color = activeHoldBg.style.backgroundColor; activeHoldBg = null; }
+        }
     </script>
 </body>
 </html>
