@@ -28,6 +28,7 @@
         <button onclick="switchTab('tab-klaim')" id="btn-tab-klaim" class="flex-1 py-3 rounded-xl font-bold text-sm text-gray-400 transition-all"><i class="fa-solid fa-money-bill-transfer mr-1"></i> Penagihan</button>
     </div>
 
+    <!-- TAB 1: KASIR -->
     <div id="tab-kasir" class="tab-content active">
         <div class="bg-white rounded-2xl p-6 mb-6 text-center border-2 border-[var(--primary)] shadow-lg">
             <h3 class="text-lg font-black mb-4"><i class="fa-solid fa-camera text-[var(--orange)] mr-2"></i> Scan QR Pembeli</h3>
@@ -57,25 +58,22 @@
         </div>
     </div>
 
+    <!-- TAB 2: PENAGIHAN -->
     <div id="tab-klaim" class="tab-content">
         <div class="card-primary p-6 text-center mb-6">
             <h3 class="text-lg font-black mb-2 text-[var(--yellow)]">Total Penagihan Aktif</h3>
             <h1 id="totalUnclaimed" class="text-4xl font-black mb-6">Rp 0</h1>
-            
             <div class="bg-black/20 rounded-xl p-4 text-left mb-4">
                 <p class="text-xs font-bold text-[var(--yellow)] mb-2"><i class="fa-solid fa-users"></i> Daftar Pembeli Hari Ini:</p>
                 <ul id="listPembeli" class="text-sm font-bold space-y-1 h-32 overflow-y-auto pr-2"></ul>
             </div>
-
             <textarea id="chatMitra" class="input-mobile text-sm mb-4" rows="2" placeholder="Tulis pesan ke Kepala Kantor (Opsional)..."></textarea>
-
             <button id="btnKlaim" class="hold-btn w-full border-2 border-[var(--orange)] py-4 rounded-xl font-bold shadow-lg mb-6"
                     onmousedown="startHold(event, executeKlaimDana, 'var(--orange)')" onmouseup="cancelHold(event)" onmouseleave="cancelHold(event)"
                     ontouchstart="startHold(event, executeKlaimDana, 'var(--orange)')" ontouchend="cancelHold(event)">
                 <div class="hold-bg"></div>
                 <span class="hold-text text-[var(--orange)]"><i class="fa-brands fa-whatsapp mr-2"></i> Buat Tagihan & Kirim WA</span>
             </button>
-
             <div class="bg-white text-[var(--dark)] p-4 rounded-2xl shadow-inner mx-auto border-2 border-white/20">
                 <p class="text-xs font-black mb-2">Tunjukkan QR ini ke Kepala Kantor saat menagih</p>
                 <div id="qrMitraBox" class="flex justify-center mb-2"></div>
@@ -95,9 +93,13 @@
         if (user) {
             document.getElementById('mitraName').innerText = user.nama;
             document.getElementById('qrMitraLabel').innerText = user.id_user;
-            new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff" });
+            
+            // Densitas QR Mitra juga diatur agar Admin gampang scan
+            new QRCode(document.getElementById("qrMitraBox"), { 
+                text: user.id_user, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M 
+            });
             refreshData(); 
-            setInterval(silentSync, 30000); // Silent Sync tiap 30 detik
+            setInterval(silentSync, 30000); 
         }
 
         async function silentSync() {
@@ -127,18 +129,13 @@
 
         async function loadDataKlaim() {
             const data = await callAPI("get_mitra_data", { id_mitra: user.id_user });
-            totalBisaDiklaim = data.total_unclaimed;
-            rincianPembeli = data.rincian;
-            noWaAdmin = data.no_wa_admin;
-            
+            totalBisaDiklaim = data.total_unclaimed; rincianPembeli = data.rincian; noWaAdmin = data.no_wa_admin;
             document.getElementById('totalUnclaimed').innerText = formatRp(totalBisaDiklaim);
             const ul = document.getElementById('listPembeli');
             if(rincianPembeli.length === 0) ul.innerHTML = "<li class='text-gray-300 italic text-xs'>Belum ada transaksi hari ini</li>";
             else ul.innerHTML = rincianPembeli.map(r => `<li class="flex justify-between border-b border-white/20 pb-1"><span>${r.nama}</span> <span class="text-[var(--yellow)]">${formatRp(r.nominal)}</span></li>`).join('');
-
             const btn = document.getElementById('btnKlaim');
-            if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } 
-            else { btn.style.opacity="1"; btn.style.pointerEvents="auto"; }
+            if(totalBisaDiklaim === 0) { btn.style.opacity="0.5"; btn.style.pointerEvents="none"; } else { btn.style.opacity="1"; btn.style.pointerEvents="auto"; }
         }
 
         async function executeKlaimDana() {
@@ -147,53 +144,57 @@
             try {
                 await callAPI("klaim_mitra", { id_mitra: user.id_user, catatan: pesan });
                 let listTeks = rincianPembeli.map(r => `- ${r.nama} (${formatRp(r.nominal)})`).join('%0A');
-                let teksWa = `Halo Bapak/Ibu Kepala Kantor,%0A%0AIni tagihan dari *${user.nama}*. Berikut rincian staf yang jajan hari ini:%0A${listTeks}%0A%0A*Total Tagihan: ${formatRp(totalBisaDiklaim)}*%0A%0ACatatan: ${pesan || 'Tidak ada catatan'}.%0A%0AMohon divalidasi/dicairkan. Terima kasih!`;
-                
-                let waFormat = noWaAdmin.toString();
-                if (waFormat.startsWith('0')) waFormat = '62' + waFormat.substring(1);
-
-                Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', text: `Meneruskan ke WhatsApp Kepala Kantor...`, timer: 2000, showConfirmButton: false }).then(() => {
+                let teksWa = `Halo Kepala Kantor,%0AIni tagihan dari *${user.nama}*:%0A${listTeks}%0A*Total: ${formatRp(totalBisaDiklaim)}*%0ACatatan: ${pesan || '-'}`;
+                let waFormat = noWaAdmin.toString(); if (waFormat.startsWith('0')) waFormat = '62' + waFormat.substring(1);
+                Swal.fire({ icon: 'success', title: 'Tagihan Dibuat!', timer: 2000, showConfirmButton: false }).then(() => {
                     window.open(`https://wa.me/${waFormat}?text=${teksWa}`, '_blank');
                     document.getElementById('chatMitra').value = ""; silentSync();
                 });
             } catch (err) {}
         }
 
+        // ==========================================
+        // FIX 2: OPTIMASI KEKUATAN & FOKUS LENSA SCANNER
+        // ==========================================
         function startScanner() {
             document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScan').classList.add('hidden'); document.getElementById('btnStopScan').classList.remove('hidden'); document.getElementById('panelTagihan').classList.add('hidden'); 
             isProcessingQR = false;
             html5QrcodeScanner = new Html5Qrcode("reader");
             
-            // Perbaikan Scanner Responsive
             const boxSize = Math.min(250, window.innerWidth - 80); 
             html5QrcodeScanner.start(
                 { facingMode: "environment" }, 
-                { fps: 15, qrbox: { width: boxSize, height: boxSize } }, 
+                { 
+                    fps: 20, // Dinaikkan agar lebih cepat bereaksi
+                    qrbox: { width: boxSize, height: boxSize },
+                    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // Hanya fokus cari QR Code (Bukan Barcode garis)
+                }, 
                 onScanSuccess, ()=>{}
             ).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
         }
+
         function stopScanner() {
             if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
             document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); document.getElementById('btnStopScan').classList.add('hidden');
         }
+
         async function onScanSuccess(decodedText) {
-            if(isProcessingQR) return; isProcessingQR = true;
-            stopScanner();
+            if(isProcessingQR) return; isProcessingQR = true; stopScanner();
             try {
                 const staff = await callAPI("cek_staff", { qr_id: decodedText });
                 scannedStaffID = staff.id_user;
                 document.getElementById('namaPelanggan').innerText = staff.nama; document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
                 document.getElementById('panelTagihan').classList.remove('hidden'); document.getElementById('inputNominal').value = '';
                 new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
-            } catch (error) { Swal.fire("Error", "QR bukan Staff valid.", "error"); isProcessingQR = false; }
+            } catch (error) { Swal.fire("Error", error.message, "error"); isProcessingQR = false; }
         }
+
         async function executeTagihan() {
             const nom = parseInt(document.getElementById('inputNominal').value);
             if (!nom || nom <= 0) return Swal.fire("Peringatan", "Nominal salah", "warning");
             try {
                 await callAPI("bayar_umkm", { id_staff: scannedStaffID, id_mitra: user.id_user, nominal: nom });
-                Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden');
-                silentSync();
+                Swal.fire({ icon: 'success', title: 'Sukses!' }); document.getElementById('panelTagihan').classList.add('hidden'); silentSync();
             } catch (err) {}
         }
 
