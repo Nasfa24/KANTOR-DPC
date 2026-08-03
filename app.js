@@ -68,3 +68,13 @@ function logout() {
     localStorage.removeItem('userSession');
     window.location.href = 'index.html';
 }
+// ==========================================
+// ENGINE INSTALASI APLIKASI (PWA)
+// ==========================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('Sistem Aplikasi Terinstal (PWA Aktif)'))
+      .catch(err => console.log('PWA Gagal:', err));
+  });
+}
