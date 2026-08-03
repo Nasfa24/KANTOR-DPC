@@ -1,0 +1,16 @@
+{
+  "name": "SuperApp Kantor",
+  "short_name": "SuperApp",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#03754c",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3256/3256114.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
