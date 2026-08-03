@@ -1,31 +1,22 @@
-const CACHE_NAME = 'superapp-cache-v1';
-const urlsToCache = [
-  './',
-  './index.html',
-  './dashboard-staff.html',
-  './dashboard-mitra.html',
-  './dashboard-admin.html',
-  './style.css',
-  './app.js'
-];
+const CACHE_NAME = 'superapp-v2';
+const urlsToCache = ['./', './index.html', './dashboard-staff.html', './dashboard-mitra.html', './dashboard-admin.html', './style.css', './app.js'];
 
-// Install Service Worker
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
-    })
-  );
+  self.skipWaiting();
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
 });
 
-// Bypass API Google dari Cache agar data selalu Real-Time
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(key => {
+    if (key !== CACHE_NAME) return caches.delete(key);
+  }))));
+  self.clients.claim();
+});
+
 self.addEventListener('fetch', event => {
-  if (event.request.url.includes('script.google.com')) {
-    return; // Biarkan API tembus langsung
+  // MUTLAK: Jangan pernah Cache request POST atau API Google untuk mencegah "Failed to Fetch"
+  if (event.request.method !== 'GET' || event.request.url.includes('script.google') || event.request.url.includes('googleusercontent')) {
+    return; 
   }
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
-  );
+  event.respondWith(caches.match(event.request).then(res => res || fetch(event.request)));
 });
