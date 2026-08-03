@@ -93,11 +93,7 @@
         if (user) {
             document.getElementById('mitraName').innerText = user.nama;
             document.getElementById('qrMitraLabel').innerText = user.id_user;
-            
-            // Densitas QR Mitra juga diatur agar Admin gampang scan
-            new QRCode(document.getElementById("qrMitraBox"), { 
-                text: user.id_user, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M 
-            });
+            new QRCode(document.getElementById("qrMitraBox"), { text: user.id_user, width: 180, height: 180, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
             refreshData(); 
             setInterval(silentSync, 30000); 
         }
@@ -153,40 +149,46 @@
             } catch (err) {}
         }
 
-        // ==========================================
-        // FIX 2: OPTIMASI KEKUATAN & FOKUS LENSA SCANNER
-        // ==========================================
+        // =======================================================
+        // BUG FIX: ASYNC-AWAIT SCANNER STOP (MENCEGAH CRASH UI)
+        // =======================================================
         function startScanner() {
             document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScan').classList.add('hidden'); document.getElementById('btnStopScan').classList.remove('hidden'); document.getElementById('panelTagihan').classList.add('hidden'); 
             isProcessingQR = false;
             html5QrcodeScanner = new Html5Qrcode("reader");
-            
             const boxSize = Math.min(250, window.innerWidth - 80); 
-            html5QrcodeScanner.start(
-                { facingMode: "environment" }, 
-                { 
-                    fps: 20, // Dinaikkan agar lebih cepat bereaksi
-                    qrbox: { width: boxSize, height: boxSize },
-                    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // Hanya fokus cari QR Code (Bukan Barcode garis)
-                }, 
-                onScanSuccess, ()=>{}
-            ).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
+            
+            // Format QR_CODE eksklusif dilepas agar kompatibel dengan seluruh versi browser HP
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: boxSize, height: boxSize } }, onScanSuccess, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScanner(); });
         }
 
-        function stopScanner() {
-            if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear());
+        async function stopScanner() {
+            if(html5QrcodeScanner) {
+                try { await html5QrcodeScanner.stop(); html5QrcodeScanner.clear(); } catch(e) {}
+                html5QrcodeScanner = null;
+            }
             document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScan').classList.remove('hidden'); document.getElementById('btnStopScan').classList.add('hidden');
         }
 
         async function onScanSuccess(decodedText) {
-            if(isProcessingQR) return; isProcessingQR = true; stopScanner();
+            if(isProcessingQR) return; 
+            isProcessingQR = true; 
+            new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
+            
+            // Tunggu kamera benar-benar mati sebelum menarik data dari API
+            await stopScanner();
+            
             try {
                 const staff = await callAPI("cek_staff", { qr_id: decodedText });
                 scannedStaffID = staff.id_user;
-                document.getElementById('namaPelanggan').innerText = staff.nama; document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
-                document.getElementById('panelTagihan').classList.remove('hidden'); document.getElementById('inputNominal').value = '';
-                new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{});
-            } catch (error) { Swal.fire("Error", error.message, "error"); isProcessingQR = false; }
+                document.getElementById('namaPelanggan').innerText = staff.nama; 
+                document.getElementById('saldoPelanggan').innerText = formatRp(staff.saldo);
+                document.getElementById('panelTagihan').classList.remove('hidden'); 
+                document.getElementById('inputNominal').value = '';
+            } catch (error) { 
+                isProcessingQR = false; 
+                // Error "User tidak ditemukan" akan dimunculkan oleh app.js secara otomatis
+            }
         }
 
         async function executeTagihan() {
