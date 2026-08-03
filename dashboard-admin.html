@@ -23,7 +23,6 @@
         </div>
     </div>
 
-    <!-- UI: Info Dual Saldo -->
     <div class="card-primary p-5 mb-6 text-center shadow-lg">
         <div class="flex justify-between items-center mb-3 border-b border-white/20 pb-3">
             <div class="text-left w-1/2 pr-2">
@@ -44,7 +43,7 @@
     <div class="flex gap-1 mb-6 bg-gray-100 p-1 rounded-2xl overflow-x-auto">
         <button onclick="switchTab('tab-operasional')" id="btn-tab-operasional" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs bg-white shadow text-[var(--primary)] min-w-[100px] transition-all"><i class="fa-solid fa-user-tie"></i> Pribadi</button>
         <button onclick="switchTab('tab-bayar')" id="btn-tab-bayar" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px] transition-all"><i class="fa-solid fa-qrcode"></i> Bayar Mitra</button>
-        <button onclick="switchTab('tab-pantau')" id="btn-tab-pantau" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px] transition-all"><i class="fa-solid fa-chart-simple"></i> Monitor Absensi</button>
+        <button onclick="switchTab('tab-pantau')" id="btn-tab-pantau" class="flex-1 py-3 px-2 rounded-xl font-bold text-xs text-gray-400 min-w-[100px] transition-all"><i class="fa-solid fa-chart-simple"></i> Monitor Absen</button>
     </div>
 
     <!-- TAB 1: PRIBADI -->
@@ -83,7 +82,6 @@
                     <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-1 rounded font-bold animate-pulse">🔴 Live REC</div>
                 </div>
                 <canvas id="selfieCanvas" style="display:none;"></canvas>
-
                 <button id="btnAbsen" class="hold-btn w-full border-2 border-[var(--yellow)] py-4 rounded-xl font-bold shadow-lg"
                         onmousedown="startHoldAbsen(event)" onmouseup="cancelHoldAbsen(event)" onmouseleave="cancelHoldAbsen(event)"
                         ontouchstart="startHoldAbsen(event)" ontouchend="cancelHoldAbsen(event)">
@@ -155,7 +153,7 @@
 
         if (user) {
             document.getElementById('qrIDLabel').innerText = user.id_user;
-            new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 220, height: 220, colorDark: "#000000", colorLight: "#ffffff" });
+            new QRCode(document.getElementById("qrcodeBox"), { text: user.id_user, width: 220, height: 220, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
             refreshData(); 
             setInterval(silentSync, 30000); 
         }
@@ -181,7 +179,7 @@
                     document.getElementById('txtBtnAbsen').innerHTML = `<i class="fa-solid fa-person-walking-arrow-right mr-2"></i> Tahan Absen Pulang`;
                 } else if(absenInfo.status === "SELESAI") {
                     lbl.innerText = `SELESAI KERJA`; lbl.style.backgroundColor = "white"; lbl.style.color = "var(--primary)";
-                    btnPanel.innerHTML = `<div class="text-center p-4 bg-white/10 rounded-xl border border-white/20"><i class="fa-solid fa-clipboard-check text-4xl mb-2 text-white"></i><p class="text-[11px] font-black text-white uppercase tracking-widest">Tugas Hari Ini Selesai</p></div>`;
+                    btnPanel.innerHTML = `<div class="text-center p-4 bg-white/10 rounded-xl border border-white/20"><i class="fa-solid fa-clipboard-check text-4xl mb-2 text-white"></i><p class="text-[11px] font-black text-white uppercase tracking-widest">Tugas Selesai</p></div>`;
                     document.getElementById('panelEksekusiAbsen').classList.add('hidden');
                 }
             } catch (err) {}
@@ -213,12 +211,12 @@
             document.getElementById('listStaf').innerHTML = data.staf.map(s => {
                 window.stafDetails[s.id_user] = s.detail_absen;
                 let noWa = s.no_wa.toString(); if(noWa.startsWith('0')) noWa = '62' + noWa.substring(1);
-                let waLink = `https://wa.me/${noWa}?text=${encodeURIComponent(`Halo ${s.nama}, info dari Kepala Kantor: Kuota makan UMKM kamu sisa *${formatRp(s.saldo)}*. Jangan lupa digunakan!`)}`;
+                let waLink = `https://wa.me/${noWa}?text=${encodeURIComponent(`Halo ${s.nama}, Kuota makan UMKM kamu sisa *${formatRp(s.saldo)}*. Jangan lupa digunakan!`)}`;
                 
                 let bgWarna = "bg-black/20"; let iconInfo = `<i class="fa-solid fa-clock text-gray-400 mr-1"></i> Belum Absen`;
                 if(s.absen_hari_ini.includes("TUGAS LUAR")) { bgWarna = "bg-orange-500/20 border-orange-500/50"; iconInfo = `<i class="fa-solid fa-car text-[var(--orange)] mr-1"></i> ${s.absen_hari_ini}`; }
                 else if(s.absen_hari_ini.includes("PULANG")) { bgWarna = "bg-white/10 border-white/20"; iconInfo = `<i class="fa-solid fa-check-double text-green-400 mr-1"></i> Selesai`; }
-                else if(s.absen_hari_ini.includes("DI KANTOR")) { bgWarna = "bg-black/40 border-[var(--yellow)]"; iconInfo = `<i class="fa-solid fa-building text-[var(--yellow)] mr-1"></i> Di Kantor (Sedang Kerja)`; }
+                else if(s.absen_hari_ini.includes("DI KANTOR")) { bgWarna = "bg-black/40 border-[var(--yellow)]"; iconInfo = `<i class="fa-solid fa-building text-[var(--yellow)] mr-1"></i> Di Kantor (Kerja)`; }
 
                 return `<div class="p-3 ${bgWarna} rounded-xl border relative">
                             <div class="flex justify-between items-center mb-1">
@@ -236,25 +234,9 @@
             const detail = window.stafDetails[idUser];
             if(!detail) return Swal.fire("Informasi", `${nama} belum absensi hari ini.`, "info");
             let imgHtml = detail.foto_masuk ? `<img src="${detail.foto_masuk}" class="w-28 h-36 object-cover rounded-xl shadow-lg border-2 border-gray-300 transform -scale-x-100">` : `<div class="w-28 h-36 bg-gray-200 rounded-xl flex items-center justify-center"><i class="fa-solid fa-image text-gray-400 text-3xl"></i></div>`;
-            
             Swal.fire({
                 title: `<p class="text-lg font-black text-[var(--primary)] uppercase border-b-2 pb-2">Bukti Kehadiran</p>`,
-                html: `
-                    <div class="text-left bg-gray-50 p-4 rounded-2xl mt-2 border border-gray-200">
-                        <div class="flex gap-4 mb-4">${imgHtml}
-                            <div class="flex-1 space-y-2 text-sm font-bold text-gray-600">
-                                <p><span class="text-xs font-black tracking-widest text-gray-400 block uppercase">Nama Staf</span> <span class="text-black text-lg">${nama}</span></p>
-                                <p><span class="text-xs font-black tracking-widest text-gray-400 block uppercase">Jam Masuk</span> <span class="text-[var(--primary)]">${detail.waktu_masuk}</span></p>
-                                <p><span class="text-xs font-black tracking-widest text-gray-400 block uppercase">Jam Pulang</span> ${detail.waktu_pulang}</p>
-                            </div>
-                        </div>
-                        <div class="bg-black text-[var(--yellow)] p-3 rounded-xl mb-3">
-                            <p class="text-xs font-bold truncate"><i class="fa-solid fa-flag text-[var(--orange)] mr-1"></i> ${detail.status}</p>
-                            <p class="text-[10px] text-gray-400 mt-1">Akurasi: ${detail.jarak}m dari pusat</p>
-                        </div>
-                        <a href="https://www.google.com/maps?q=${detail.lat},${detail.lon}" target="_blank" class="block w-full text-center bg-[var(--primary)] hover:bg-green-800 text-white font-bold py-3 rounded-xl shadow active:scale-95 transition"><i class="fa-solid fa-map-location-dot mr-2"></i> Lacak Peta Satelit</a>
-                    </div>
-                `,
+                html: `<div class="text-left bg-gray-50 p-4 rounded-2xl mt-2 border border-gray-200"><div class="flex gap-4 mb-4">${imgHtml}<div class="flex-1 space-y-2 text-sm font-bold text-gray-600"><p><span class="text-xs font-black tracking-widest text-gray-400 block uppercase">Nama Staf</span> <span class="text-black text-lg">${nama}</span></p><p><span class="text-xs font-black tracking-widest text-gray-400 block uppercase">Jam Masuk</span> <span class="text-[var(--primary)]">${detail.waktu_masuk}</span></p><p><span class="text-xs font-black tracking-widest text-gray-400 block uppercase">Jam Pulang</span> ${detail.waktu_pulang}</p></div></div><div class="bg-black text-[var(--yellow)] p-3 rounded-xl mb-3"><p class="text-xs font-bold truncate"><i class="fa-solid fa-flag text-[var(--orange)] mr-1"></i> ${detail.status}</p><p class="text-[10px] text-gray-400 mt-1">Akurasi: ${detail.jarak}m dari pusat</p></div><a href="https://www.google.com/maps?q=${detail.lat},${detail.lon}" target="_blank" class="block w-full text-center bg-[var(--primary)] hover:bg-green-800 text-white font-bold py-3 rounded-xl shadow active:scale-95 transition"><i class="fa-solid fa-map-location-dot mr-2"></i> Lacak Peta Satelit</a></div>`,
                 showConfirmButton: true, confirmButtonText: 'Tutup Detail', confirmButtonColor: 'var(--orange)', customClass: { popup: 'rounded-3xl' }
             });
         }
@@ -266,19 +248,9 @@
             if (formValues) { try { await callAPI("kas_manual", { id_admin: user.id_user, tipe: tipe, kategori: formValues.kategori, nominal: parseInt(formValues.nominal), keterangan: formValues.keterangan }); Swal.fire({icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false}); silentSync(); } catch (error) {} }
         }
 
-        function startScannerMitra() { document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScanMitra').classList.add('hidden'); document.getElementById('btnStopScanMitra').classList.remove('hidden'); document.getElementById('panelBayarMitra').classList.add('hidden'); 
-            isProcessingQR = false; html5QrcodeScanner = new Html5Qrcode("reader"); 
-            const boxSize = Math.min(250, window.innerWidth - 80);
-            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: boxSize, height: boxSize } }, onScanSuccessMitra, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScannerMitra(); }); 
-        }
+        function startScannerMitra() { document.getElementById('reader').classList.remove('hidden'); document.getElementById('btnStartScanMitra').classList.add('hidden'); document.getElementById('btnStopScanMitra').classList.remove('hidden'); document.getElementById('panelBayarMitra').classList.add('hidden'); isProcessingQR = false; html5QrcodeScanner = new Html5Qrcode("reader"); const boxSize = Math.min(250, window.innerWidth - 80); html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: boxSize, height: boxSize }, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] }, onScanSuccessMitra, ()=>{}).catch(() => { Swal.fire("Error", "Izin kamera ditolak.", "error"); stopScannerMitra(); }); }
         function stopScannerMitra() { if(html5QrcodeScanner) html5QrcodeScanner.stop().then(() => html5QrcodeScanner.clear()); document.getElementById('reader').classList.add('hidden'); document.getElementById('btnStartScanMitra').classList.remove('hidden'); document.getElementById('btnStopScanMitra').classList.add('hidden'); }
-        
-        async function onScanSuccessMitra(decodedMitraID) { 
-            if(isProcessingQR) return; isProcessingQR = true; stopScannerMitra(); 
-            try { 
-                const tagihan = await callAPI("cek_tagihan_mitra", { id_mitra: decodedMitraID }); scannedKlaimID = tagihan.id_klaim; document.getElementById('idKlaimTxt').innerText = tagihan.id_klaim; document.getElementById('idMitraTxt').innerText = decodedMitraID; document.getElementById('totalBayarTxt').innerText = formatRp(tagihan.nominal); document.getElementById('chatMitraTxt').innerText = tagihan.catatan; document.getElementById('listRincianTagihan').innerHTML = tagihan.rincian.map(r => `<li class="flex justify-between border-b border-gray-200 pb-1"><span>${r.nama}</span> <span class="text-[var(--primary)]">${formatRp(r.nominal)}</span></li>`).join(''); document.getElementById('panelBayarMitra').classList.remove('hidden'); new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{}); 
-            } catch (error) { Swal.fire("Penolakan Sistem", error.message || "QR Ditolak.", "error"); isProcessingQR = false;} 
-        }
+        async function onScanSuccessMitra(decodedMitraID) { if(isProcessingQR) return; isProcessingQR = true; stopScannerMitra(); try { const tagihan = await callAPI("cek_tagihan_mitra", { id_mitra: decodedMitraID }); scannedKlaimID = tagihan.id_klaim; document.getElementById('idKlaimTxt').innerText = tagihan.id_klaim; document.getElementById('idMitraTxt').innerText = decodedMitraID; document.getElementById('totalBayarTxt').innerText = formatRp(tagihan.nominal); document.getElementById('chatMitraTxt').innerText = tagihan.catatan; document.getElementById('listRincianTagihan').innerHTML = tagihan.rincian.map(r => `<li class="flex justify-between border-b border-gray-200 pb-1"><span>${r.nama}</span> <span class="text-[var(--primary)]">${formatRp(r.nominal)}</span></li>`).join(''); document.getElementById('panelBayarMitra').classList.remove('hidden'); new Audio('https://www.soundjay.com/buttons/sounds/beep-01a.mp3').play().catch(()=>{}); } catch (error) { Swal.fire("Penolakan Sistem", error.message || "QR Ditolak.", "error"); isProcessingQR=false;} }
         async function executeBayarKlaim() { try { await callAPI("admin_bayar_klaim", { id_klaim: scannedKlaimID, id_admin: user.id_user }); Swal.fire({ icon: 'success', title: 'Kas Dipotong!', text: `Pembayaran berhasil.`, confirmButtonColor: '#03754c' }); document.getElementById('panelBayarMitra').classList.add('hidden'); silentSync(); } catch (error) {} }
 
         // ABSEN ADMIN
@@ -289,8 +261,8 @@
             if (!navigator.geolocation) return Swal.fire("Error", "GPS tidak didukung", "error");
             const btnScan = document.getElementById('btnScanGPS'); btnScan.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Mengunci..."; btnScan.disabled = true;
             navigator.geolocation.getCurrentPosition(
-                async (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; try { videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }); document.getElementById('selfieVideo').srcObject = videoStream; document.getElementById('panelPersiapanAbsen').classList.add('hidden'); document.getElementById('panelEksekusiAbsen').classList.remove('hidden'); } catch(e) { Swal.fire("Kamera Gagal", "Izinkan akses.", "error"); btnScan.innerHTML = "BUKA KAMERA & GPS"; btnScan.disabled = false; } },
-                (err) => { btnScan.innerHTML = "BUKA KAMERA & GPS"; btnScan.disabled = false; Swal.fire("GPS Gagal", "Izinkan lokasi.", "error"); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                async (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; try { videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }); document.getElementById('selfieVideo').srcObject = videoStream; document.getElementById('panelPersiapanAbsen').classList.add('hidden'); document.getElementById('panelEksekusiAbsen').classList.remove('hidden'); } catch(e) { Swal.fire("Kamera Gagal", "Izinkan akses.", "error"); btnScan.innerHTML = "<i class='fa-solid fa-camera mr-2'></i> BUKA KAMERA & GPS"; btnScan.disabled = false; } },
+                (err) => { btnScan.innerHTML = "<i class='fa-solid fa-camera mr-2'></i> BUKA KAMERA & GPS"; btnScan.disabled = false; Swal.fire("GPS Gagal", "Izinkan lokasi.", "error"); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
         let holdTimer, activeHoldBg = null;
